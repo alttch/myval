@@ -332,10 +332,10 @@ impl DataFrame {
         }
     }
     /// Pop series by index
-    pub fn pop_series_at(&mut self, idx: usize) -> Result<Series, Error> {
-        if idx < self.fields.len() {
-            self.fields.remove(idx);
-            Ok(self.data.remove(idx))
+    pub fn pop_series_at(&mut self, index: usize) -> Result<Series, Error> {
+        if index < self.fields.len() {
+            self.fields.remove(index);
+            Ok(self.data.remove(index))
         } else {
             Err(Error::OutOfBounds)
         }
@@ -350,8 +350,8 @@ impl DataFrame {
         }
     }
     /// Override field data type by index
-    pub fn set_data_type_at(&mut self, idx: usize, data_type: DataType) -> Result<(), Error> {
-        if let Some(field) = self.fields.get_mut(idx) {
+    pub fn set_data_type_at(&mut self, index: usize, data_type: DataType) -> Result<(), Error> {
+        if let Some(field) = self.fields.get_mut(index) {
             field.data_type = data_type;
             Ok(())
         } else {
