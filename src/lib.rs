@@ -7,6 +7,7 @@ pub mod df;
 pub enum Error {
     OutOfBounds,
     RowsNotMatch,
+    NotFound(String),
     Unimplemented(String),
     #[cfg(feature = "sqlx")]
     Database(sqlx::Error),
@@ -24,6 +25,7 @@ impl fmt::Display for Error {
         match self {
             Error::OutOfBounds => write!(f, "index out of bounds"),
             Error::RowsNotMatch => write!(f, "row count does not match"),
+            Error::NotFound(s) => write!(f, "not found: {}", s),
             Error::Unimplemented(s) => write!(f, "feature/type not implemented: {}", s),
             #[cfg(feature = "sqlx")]
             Error::Database(e) => write!(f, "database error: {}", e),

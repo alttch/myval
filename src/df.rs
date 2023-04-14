@@ -268,6 +268,7 @@ impl DataFrame {
         writer.finish()?;
         Ok(buf)
     }
+    /// Create a data frame from a complete IPC block
     pub fn from_ipc_block(block: &[u8]) -> Result<Self, ArrowError> {
         let mut buf = std::io::Cursor::new(block);
         let meta = arrow2::io::ipc::read::read_stream_metadata(&mut buf)?;
@@ -284,6 +285,24 @@ impl DataFrame {
             }
         }
         Ok(DataFrame::new0(0))
+    }
+    /// Override field data type
+    pub fn set_data_type(&mut self, name: &str, data_type: DataType) -> Result<(), Error> {
+        if let Some(field) = self.fields.iter_mut().find(|field| field.name == name) {
+            field.data_type = data_type;
+            Ok(())
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    /// Override field data type by index
+    pub fn set_data_type_idx(&mut self, idx: usize, data_type: DataType) -> Result<(), Error> {
+        if let Some(field) = self.fields.get_mut(idx) {
+            field.data_type = data_type;
+            Ok(())
+        } else {
+            Err(Error::NotFound(idx.to_string()))
+        }
     }
 }
 
