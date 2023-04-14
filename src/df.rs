@@ -332,7 +332,7 @@ impl DataFrame {
         }
     }
     /// Pop series by index
-    pub fn pop_series_by_idx(&mut self, idx: usize) -> Result<Series, Error> {
+    pub fn pop_series_at(&mut self, idx: usize) -> Result<Series, Error> {
         if idx < self.fields.len() {
             self.fields.remove(idx);
             Ok(self.data.remove(idx))
@@ -350,7 +350,7 @@ impl DataFrame {
         }
     }
     /// Override field data type by index
-    pub fn set_data_type_idx(&mut self, idx: usize, data_type: DataType) -> Result<(), Error> {
+    pub fn set_data_type_at(&mut self, idx: usize, data_type: DataType) -> Result<(), Error> {
         if let Some(field) = self.fields.get_mut(idx) {
             field.data_type = data_type;
             Ok(())
