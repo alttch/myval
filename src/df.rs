@@ -185,6 +185,37 @@ impl DataFrame {
         let dt = series.data_type().clone();
         self.add_series(name, series, dt)
     }
+    /// Insert series to the data frame as a new column and specify its type
+    pub fn insert_series(
+        &mut self,
+        name: &str,
+        series: Series,
+        index: usize,
+        data_type: DataType,
+    ) -> Result<(), Error> {
+        if index <= self.data.len() {
+            if series.len() == self.rows {
+                self.fields.insert(index, Field::new(name, data_type, true));
+                self.data.insert(index, series);
+                Ok(())
+            } else {
+                Err(Error::RowsNotMatch)
+            }
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    }
+    /// Add series to the data frame as a new column and use the same type as the series
+    #[inline]
+    pub fn insert_series0(
+        &mut self,
+        name: &str,
+        series: Series,
+        index: usize,
+    ) -> Result<(), Error> {
+        let dt = series.data_type().clone();
+        self.insert_series(name, series, index, dt)
+    }
     /// Create a vector of sliced series
     pub fn try_series_sliced(&self, offset: usize, length: usize) -> Result<Vec<Series>, Error> {
         if offset + length <= self.rows {
@@ -286,6 +317,29 @@ impl DataFrame {
         }
         Ok(DataFrame::new0(0))
     }
+    /// Pop series by name
+    pub fn pop_series(&mut self, name: &str) -> Result<Series, Error> {
+        if let Some((pos, _)) = self
+            .fields
+            .iter()
+            .enumerate()
+            .find(|(_, field)| field.name == name)
+        {
+            self.fields.remove(pos);
+            Ok(self.data.remove(pos))
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    /// Pop series by index
+    pub fn pop_series_by_idx(&mut self, idx: usize) -> Result<Series, Error> {
+        if idx < self.fields.len() {
+            self.fields.remove(idx);
+            Ok(self.data.remove(idx))
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    }
     /// Override field data type
     pub fn set_data_type(&mut self, name: &str, data_type: DataType) -> Result<(), Error> {
         if let Some(field) = self.fields.iter_mut().find(|field| field.name == name) {
@@ -301,7 +355,7 @@ impl DataFrame {
             field.data_type = data_type;
             Ok(())
         } else {
-            Err(Error::NotFound(idx.to_string()))
+            Err(Error::OutOfBounds)
         }
     }
 }
