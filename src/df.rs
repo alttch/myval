@@ -1,3 +1,6 @@
+#[cfg(feature = "arrow2_ih")]
+extern crate arrow2_ih as arrow2;
+
 use crate::{Error, Time, TimeZone};
 use arrow2::array::{Array, Int64Array, Utf8Array};
 use arrow2::chunk::Chunk;
