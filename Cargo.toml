@@ -17,7 +17,7 @@ features = ["full"]
 
 [dependencies]
 arrow2 = { version = "0.17.0", features = ["io_ipc"], optional = true }
-arrow2_ih = { package = "arrow2", git = "https://github.com/divi255/arrow2", features = ["io_ipc"], optional = true }
+arrow2_ih = { version = "0.17.0", package = "arrow2", git = "https://github.com/divi255/arrow2", features = ["io_ipc"], optional = true }
 chrono = "0.4.24"
 polars = { version = "0.28.0", optional = true }
 sqlx = { version = "0.6.3", features = ["chrono", "postgres", "runtime-tokio-native-tls"], optional = true }
