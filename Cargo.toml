@@ -1,6 +1,6 @@
 [package]
 name = "arrow_util"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Serhij S. <div@altertech.com>"]
 license = "Apache-2.0"
@@ -8,6 +8,12 @@ repository = "https://github.com/alttch/arrow-util"
 description = "Tools for Apache Arrow"
 readme = "README.md"
 keywords = ["arrow", "dataframe", "database", "convert"]
+
+[package.metadata.docs.rs]
+features = ["full"]
+
+[package.metadata.playground]
+features = ["full"]
 
 [dependencies]
 arrow2 = { version = "0.17.0", features = ["io_ipc"], optional = true }
@@ -23,9 +29,3 @@ path = "src/lib.rs"
 [features]
 default = ["arrow2"]
 full = ["default", "sqlx", "polars"]
-
-[package.metadata.docs.rs]
-features = ["full"]
-
-[package.metadata.playground]
-features = ["full"]
