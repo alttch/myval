@@ -6,6 +6,7 @@ use arrow2::array::{Array, Int64Array, Utf8Array};
 use arrow2::chunk::Chunk;
 use arrow2::datatypes::{DataType, Field, Schema, TimeUnit};
 use arrow2::error::Error as ArrowError;
+use arrow2::io::ipc::read::{StreamReader, StreamState};
 use arrow2::io::ipc::write::{StreamWriter, WriteOptions};
 use chrono::{DateTime, Local, NaiveDateTime, SecondsFormat, Utc};
 
@@ -266,6 +267,23 @@ impl DataFrame {
         writer.write(&chunk, None)?;
         writer.finish()?;
         Ok(buf)
+    }
+    pub fn from_ipc_block(block: &[u8]) -> Result<Self, ArrowError> {
+        let mut buf = std::io::Cursor::new(block);
+        let meta = arrow2::io::ipc::read::read_stream_metadata(&mut buf)?;
+        let reader = StreamReader::new(buf, meta, None);
+        let fields = reader.metadata().schema.fields.clone();
+        for state in reader {
+            match state? {
+                StreamState::Waiting => continue,
+                StreamState::Some(chunk) => {
+                    let data = chunk.into_arrays();
+                    let rows = data.first().map_or(0, |v| v.len());
+                    return Ok(Self { fields, data, rows });
+                }
+            }
+        }
+        Ok(DataFrame::new0(0))
     }
 }
 
