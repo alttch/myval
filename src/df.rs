@@ -29,7 +29,7 @@ pub struct DataFrame {
     fields: Vec<Field>,
     data: Vec<Series>,
     rows: usize,
-    metadata: Option<Metadata>,
+    metadata: Metadata,
 }
 
 macro_rules! convert {
@@ -69,7 +69,7 @@ impl DataFrame {
             data: Vec::with_capacity(cols.unwrap_or_default()),
             rows,
             fields: Vec::with_capacity(cols.unwrap_or_default()),
-            metadata: None,
+            metadata: <_>::default(),
         }
     }
     /// Create a new time-series data frame from f64 timestamps
@@ -156,7 +156,7 @@ impl DataFrame {
             fields: schema.fields.clone(),
             data,
             rows,
-            metadata: Some(schema.metadata.clone()),
+            metadata: schema.metadata.clone(),
         }
     }
     /// Create a data frame from vector of fields and vector of series
@@ -180,11 +180,11 @@ impl DataFrame {
             fields,
             data,
             rows,
-            metadata,
+            metadata: metadata.unwrap_or_default(),
         })
     }
     /// Split the data frame into vector of fields, vector of series and metadata
-    pub fn into_parts(self) -> (Vec<Field>, Vec<Series>, Option<Metadata>) {
+    pub fn into_parts(self) -> (Vec<Field>, Vec<Series>, Metadata) {
         (self.fields, self.data, self.metadata)
     }
     #[inline]
@@ -193,13 +193,18 @@ impl DataFrame {
     }
     /// metadata
     #[inline]
-    pub fn metadata(&self) -> Option<&Metadata> {
-        self.metadata.as_ref()
+    pub fn metadata(&self) -> &Metadata {
+        &self.metadata
     }
     /// metadata mutable
     #[inline]
-    pub fn metadata_mut(&mut self) -> Option<&mut Metadata> {
-        self.metadata.as_mut()
+    pub fn metadata_mut(&mut self) -> &mut Metadata {
+        &mut self.metadata
+    }
+    /// set metadata
+    #[inline]
+    pub fn set_metadata(&mut self, metadata: Metadata) {
+        self.metadata = metadata;
     }
     /// Column names
     #[inline]
@@ -393,21 +398,13 @@ impl DataFrame {
                         fields,
                         data,
                         rows,
-                        metadata: if metadata.is_empty() {
-                            None
-                        } else {
-                            Some(metadata)
-                        },
+                        metadata,
                     });
                 }
             }
         }
         let mut df = DataFrame::new0(0);
-        df.metadata = if metadata.is_empty() {
-            Some(metadata)
-        } else {
-            None
-        };
+        df.metadata = metadata;
         Ok(df)
     }
     /// Pop series by name
