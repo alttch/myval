@@ -1,7 +1,7 @@
 <h2>
   Myval - a lightweight Apache Arrow data frame for Rust
-  <a href="https://crates.io/crates/arrow_util"><img alt="crates.io page" src="https://img.shields.io/crates/v/arrow_util.svg"></img></a>
-  <a href="https://docs.rs/arrow_util"><img alt="docs.rs page" src="https://docs.rs/arrow_util/badge.svg"></img></a>
+  <a href="https://crates.io/crates/myval"><img alt="crates.io page" src="https://img.shields.io/crates/v/myval.svg"></img></a>
+  <a href="https://docs.rs/myval"><img alt="docs.rs page" src="https://docs.rs/myval/badge.svg"></img></a>
 </h2>
 
 ## What is Myval?
