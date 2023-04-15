@@ -340,6 +340,24 @@ impl DataFrame {
             Err(Error::OutOfBounds)
         }
     }
+    /// Override field name
+    pub fn set_name(&mut self, name: &str, new_name: &str) -> Result<(), Error> {
+        if let Some(field) = self.fields.iter_mut().find(|field| field.name == name) {
+            field.name = new_name.to_owned();
+            Ok(())
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    /// Override field data type by index
+    pub fn set_name_at(&mut self, index: usize, new_name: &str) -> Result<(), Error> {
+        if let Some(field) = self.fields.get_mut(index) {
+            field.name = new_name.to_owned();
+            Ok(())
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    }
     /// Override field data type
     pub fn set_data_type(&mut self, name: &str, data_type: DataType) -> Result<(), Error> {
         if let Some(field) = self.fields.iter_mut().find(|field| field.name == name) {
