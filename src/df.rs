@@ -272,9 +272,9 @@ impl DataFrame {
         size
     }
     /// Set column ordering
-    pub fn set_ordering(&mut self, cols: &[&str]) {
-        for (i, col) in cols.iter().enumerate() {
-            if let Some(pos) = self.fields.iter().position(|r| &r.name == col) {
+    pub fn set_ordering(&mut self, names: &[&str]) {
+        for (i, name) in names.iter().enumerate() {
+            if let Some(pos) = self.fields.iter().position(|r| &r.name == name) {
                 if pos != i {
                     self.fields.swap(i, pos);
                     self.data.swap(i, pos);
