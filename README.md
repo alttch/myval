@@ -36,7 +36,7 @@ Consider there is a Arrow stream block (Schema+Chunk) received from e.g. RPC or
 Pub/Sub. Convert the block into a Myval data frame:
 
 ```rust
-let df = myval::DataFrame::from_ipc_block(data).unwrap();
+let (df, metadata) = myval::DataFrame::from_ipc_block(&buf).unwrap();
 ```
 
 Need to send a data frame back? Convert it to Arrow stream block with a single

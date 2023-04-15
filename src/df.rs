@@ -5,7 +5,7 @@ use crate::{Error, Time, TimeZone};
 use arrow2::array::{Array, Float64Array, Int64Array, Utf8Array};
 pub use arrow2::chunk::Chunk;
 use arrow2::datatypes::Field;
-pub use arrow2::datatypes::{DataType, Schema, TimeUnit};
+pub use arrow2::datatypes::{DataType, Metadata, Schema, TimeUnit};
 use arrow2::error::Error as ArrowError;
 use arrow2::io::ipc::read::{StreamReader, StreamState};
 use arrow2::io::ipc::write::{StreamWriter, WriteOptions};
@@ -340,22 +340,23 @@ impl DataFrame {
         Ok(buf)
     }
     /// Create a data frame from a complete IPC block
-    pub fn from_ipc_block(block: &[u8]) -> Result<Self, ArrowError> {
+    pub fn from_ipc_block(block: &[u8]) -> Result<(Self, Metadata), ArrowError> {
         let mut buf = std::io::Cursor::new(block);
         let meta = arrow2::io::ipc::read::read_stream_metadata(&mut buf)?;
         let reader = StreamReader::new(buf, meta, None);
         let fields = reader.metadata().schema.fields.clone();
+        let metadata = reader.metadata().schema.metadata.clone();
         for state in reader {
             match state? {
                 StreamState::Waiting => continue,
                 StreamState::Some(chunk) => {
                     let data = chunk.into_arrays();
                     let rows = data.first().map_or(0, |v| v.len());
-                    return Ok(Self { fields, data, rows });
+                    return Ok((Self { fields, data, rows }, metadata));
                 }
             }
         }
-        Ok(DataFrame::new0(0))
+        Ok((DataFrame::new0(0), metadata))
     }
     /// Pop series by name
     pub fn pop_series(&mut self, name: &str) -> Result<(Series, DataType), Error> {
