@@ -413,7 +413,7 @@ impl DataFrame {
     pub fn parse_float_at(&mut self, index: usize) -> Result<(), Error> {
         convert!(self, index, Float64Array, DataType::Float64)
     }
-    /// Override field data type by index
+    /// Set field name by index
     pub fn set_name_at(&mut self, index: usize, new_name: &str) -> Result<(), Error> {
         if let Some(field) = self.fields.get_mut(index) {
             field.name = new_name.to_owned();
