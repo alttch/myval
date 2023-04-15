@@ -2,9 +2,10 @@
 extern crate arrow2_ih as arrow2;
 
 use crate::{Error, Time, TimeZone};
-use arrow2::array::{Array, Int64Array, Utf8Array};
-use arrow2::chunk::Chunk;
-use arrow2::datatypes::{DataType, Field, Schema, TimeUnit};
+use arrow2::array::{Array, Float64Array, Int64Array, Utf8Array};
+pub use arrow2::chunk::Chunk;
+use arrow2::datatypes::Field;
+pub use arrow2::datatypes::{DataType, Schema, TimeUnit};
 use arrow2::error::Error as ArrowError;
 use arrow2::io::ipc::read::{StreamReader, StreamState};
 use arrow2::io::ipc::write::{StreamWriter, WriteOptions};
@@ -28,6 +29,30 @@ pub struct DataFrame {
     fields: Vec<Field>,
     data: Vec<Series>,
     rows: usize,
+}
+
+macro_rules! convert {
+    ($df: expr, $index: expr, $arr: tt, $dt: expr) => {
+        if let Some(series) = $df.data.get($index) {
+            let values: &Utf8Array<i64> = series
+                .as_any()
+                .downcast_ref()
+                .ok_or_else(|| Error::TypeMismatch)?;
+            let mut dt: Vec<Option<_>> = Vec::with_capacity(values.len());
+            for val in values {
+                dt.push(if let Some(s) = val {
+                    s.parse().ok()
+                } else {
+                    None
+                });
+            }
+            $df.data[$index] = $arr::from(dt).boxed();
+            $df.fields[$index].data_type = $dt;
+            Ok(())
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    };
 }
 
 impl DataFrame {
@@ -271,16 +296,31 @@ impl DataFrame {
         }
         size
     }
+    /// Get column index
+    #[inline]
+    pub fn get_column_index(&self, name: &str) -> Option<usize> {
+        self.fields.iter().position(|v| v.name == name)
+    }
     /// Set column ordering
     pub fn set_ordering(&mut self, names: &[&str]) {
         for (i, name) in names.iter().enumerate() {
-            if let Some(pos) = self.fields.iter().position(|r| &r.name == name) {
+            if let Some(pos) = self.get_column_index(name) {
                 if pos != i {
                     self.fields.swap(i, pos);
                     self.data.swap(i, pos);
                 }
             }
         }
+    }
+    /// Sort columns alphabetically
+    pub fn sort_columns(&mut self) {
+        let mut names = self
+            .fields
+            .iter()
+            .map(|v| v.name.clone())
+            .collect::<Vec<String>>();
+        names.sort();
+        self.set_ordering(&names.iter().map(String::as_str).collect::<Vec<&str>>());
     }
     /// Convert into IPC parts: schema + chunk
     pub fn into_ipc_parts(self) -> (Schema, Chunk<Box<dyn Array + 'static>>) {
@@ -340,14 +380,38 @@ impl DataFrame {
             Err(Error::OutOfBounds)
         }
     }
-    /// Override field name
-    pub fn set_name(&mut self, name: &str, new_name: &str) -> Result<(), Error> {
+    /// Rename column
+    pub fn rename(&mut self, name: &str, new_name: &str) -> Result<(), Error> {
         if let Some(field) = self.fields.iter_mut().find(|field| field.name == name) {
             field.name = new_name.to_owned();
             Ok(())
         } else {
             Err(Error::NotFound(name.to_owned()))
         }
+    }
+    /// Parse string column valus to integers
+    pub fn parse_int(&mut self, name: &str) -> Result<(), Error> {
+        if let Some(pos) = self.get_column_index(name) {
+            self.parse_int_at(pos)
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    /// Parse string column valus to floats
+    pub fn parse_float(&mut self, name: &str) -> Result<(), Error> {
+        if let Some(pos) = self.get_column_index(name) {
+            self.parse_float_at(pos)
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    /// Parse string column valus to integers
+    pub fn parse_int_at(&mut self, index: usize) -> Result<(), Error> {
+        convert!(self, index, Int64Array, DataType::Int64)
+    }
+    /// Parse string column valus to floats
+    pub fn parse_float_at(&mut self, index: usize) -> Result<(), Error> {
+        convert!(self, index, Float64Array, DataType::Float64)
     }
     /// Override field data type by index
     pub fn set_name_at(&mut self, index: usize, new_name: &str) -> Result<(), Error> {

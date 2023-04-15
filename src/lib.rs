@@ -1,14 +1,17 @@
 use chrono::Local;
 use std::fmt;
 
-pub mod df;
+mod df;
+pub use df::{Chunk, DataFrame, DataType, Schema, TimeUnit};
 
 #[derive(Debug)]
 pub enum Error {
     OutOfBounds,
     RowsNotMatch,
+    TypeMismatch,
     NotFound(String),
     Unimplemented(String),
+    Other(Box<dyn std::error::Error>),
     #[cfg(feature = "sqlx")]
     Database(sqlx::Error),
 }
@@ -25,8 +28,10 @@ impl fmt::Display for Error {
         match self {
             Error::OutOfBounds => write!(f, "index out of bounds"),
             Error::RowsNotMatch => write!(f, "row count does not match"),
+            Error::TypeMismatch => write!(f, "type does not match"),
             Error::NotFound(s) => write!(f, "not found: {}", s),
             Error::Unimplemented(s) => write!(f, "feature/type not implemented: {}", s),
+            Error::Other(e) => write!(f, "{}", e),
             #[cfg(feature = "sqlx")]
             Error::Database(e) => write!(f, "database error: {}", e),
         }
