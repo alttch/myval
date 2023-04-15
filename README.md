@@ -83,7 +83,7 @@ Check the documentation: <https://docs.rs/myval>
 
 ## Limitations
 
-* Myval is not dedicated for data engineering. Use Polars.
+* Myval is not designed for data engineering. Use Polars.
 
 * Myval series can contain a single chunk only and there are no plans to extend
 this. When a Polars data frame with multiple chunks is converted to Myval, the
