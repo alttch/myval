@@ -60,7 +60,7 @@ df.set_data_type("time",
 
 Consider there is a utf8-column "value" which should be parsed to floats:
 
-```
+```rust
 df.parse_float("value").unwrap();
 ```
 
@@ -70,7 +70,7 @@ Consider there is a Myval data frame with columns "voltage", "temp1", "temp2",
 "temp3", which has received data from a server column-by-column in random
 ordering. Let us correct the ordering back to normal:
 
-```
+```rust
 df.set_ordering(&["voltage", "temp1", "temp2", "temp3"]);
 ```
 
