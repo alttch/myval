@@ -318,24 +318,24 @@ impl DataFrame {
         Ok(DataFrame::new0(0))
     }
     /// Pop series by name
-    pub fn pop_series(&mut self, name: &str) -> Result<Series, Error> {
+    pub fn pop_series(&mut self, name: &str) -> Result<(Series, DataType), Error> {
         if let Some((pos, _)) = self
             .fields
             .iter()
             .enumerate()
             .find(|(_, field)| field.name == name)
         {
-            self.fields.remove(pos);
-            Ok(self.data.remove(pos))
+            let field = self.fields.remove(pos);
+            Ok((self.data.remove(pos), field.data_type))
         } else {
             Err(Error::NotFound(name.to_owned()))
         }
     }
     /// Pop series by index
-    pub fn pop_series_at(&mut self, index: usize) -> Result<Series, Error> {
+    pub fn pop_series_at(&mut self, index: usize) -> Result<(Series, String, DataType), Error> {
         if index < self.fields.len() {
-            self.fields.remove(index);
-            Ok(self.data.remove(index))
+            let field = self.fields.remove(index);
+            Ok((self.data.remove(index), field.name, field.data_type))
         } else {
             Err(Error::OutOfBounds)
         }
