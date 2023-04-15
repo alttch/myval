@@ -416,8 +416,10 @@ impl From<DataFrame> for polars::frame::DataFrame {
 #[cfg(feature = "polars")]
 impl From<polars::frame::DataFrame> for DataFrame {
     fn from(mut polars_df: polars::frame::DataFrame) -> DataFrame {
-        if polars_df.n_chunks() > 1 {
-            polars_df = polars_df.agg_chunks();
+        match polars_df.n_chunks() {
+            0 => return DataFrame::new0(0),
+            2.. => polars_df = polars_df.agg_chunks(),
+            _ => {}
         }
         let pl_series: Vec<polars::series::Series> = polars_df.into();
         let names: Vec<String> = pl_series.iter().map(|s| s.name().to_owned()).collect();
