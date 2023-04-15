@@ -70,7 +70,7 @@ df.parse_float("value").unwrap();
 ### Set column ordering
 
 Consider there is a Myval data frame with columns "voltage", "temp1", "temp2",
-"temp3", which has received data from a server column-by-column in random
+"temp3" which has received data from a server column-by-column in random
 ordering. Let us correct the ordering back to normal:
 
 ```rust
