@@ -44,6 +44,9 @@ line of code:
 let buf = df.into_ipc_block();
 ```
 
+Need to send sliced? No problem, there are methods which can easily return
+sliced series, sliced data frames or IPC chunks.
+
 ### Overriding data types
 
 Consider there is a i64-column "time" which contains nanosecond timestamps. Let
