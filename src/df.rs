@@ -389,7 +389,7 @@ impl DataFrame {
             Err(Error::NotFound(name.to_owned()))
         }
     }
-    /// Parse string column valus to integers
+    /// Parse string column values to integers
     pub fn parse_int(&mut self, name: &str) -> Result<(), Error> {
         if let Some(pos) = self.get_column_index(name) {
             self.parse_int_at(pos)
@@ -397,7 +397,7 @@ impl DataFrame {
             Err(Error::NotFound(name.to_owned()))
         }
     }
-    /// Parse string column valus to floats
+    /// Parse string column values to floats
     pub fn parse_float(&mut self, name: &str) -> Result<(), Error> {
         if let Some(pos) = self.get_column_index(name) {
             self.parse_float_at(pos)
@@ -405,11 +405,11 @@ impl DataFrame {
             Err(Error::NotFound(name.to_owned()))
         }
     }
-    /// Parse string column valus to integers
+    /// Parse string column values to integers
     pub fn parse_int_at(&mut self, index: usize) -> Result<(), Error> {
         convert!(self, index, Int64Array, DataType::Int64)
     }
-    /// Parse string column valus to floats
+    /// Parse string column values to floats
     pub fn parse_float_at(&mut self, index: usize) -> Result<(), Error> {
         convert!(self, index, Float64Array, DataType::Float64)
     }
