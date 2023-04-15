@@ -3,7 +3,7 @@ use chrono::Local;
 use std::fmt;
 
 mod df;
-pub use df::{Chunk, DataFrame, DataType, Schema, Series, TimeUnit};
+pub use df::{Chunk, DataFrame, DataType, Metadata, Schema, Series, TimeUnit};
 
 #[derive(Debug)]
 pub enum Error {
@@ -15,6 +15,20 @@ pub enum Error {
     Other(String),
     #[cfg(feature = "sqlx")]
     Database(sqlx::Error),
+}
+
+impl Error {
+    #[inline]
+    pub fn other(err: impl fmt::Display) -> Self {
+        Self::Other(err.to_string())
+    }
+}
+
+impl From<fmt::Error> for Error {
+    #[inline]
+    fn from(err: fmt::Error) -> Self {
+        Error::other(err)
+    }
 }
 
 #[cfg(feature = "sqlx")]
@@ -36,13 +50,6 @@ impl fmt::Display for Error {
             #[cfg(feature = "sqlx")]
             Error::Database(e) => write!(f, "database error: {}", e),
         }
-    }
-}
-
-impl From<Box<dyn std::error::Error>> for Error {
-    #[inline]
-    fn from(err: Box<dyn std::error::Error>) -> Self {
-        Self::Other(err.to_string())
     }
 }
 
