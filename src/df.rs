@@ -412,3 +412,17 @@ impl From<DataFrame> for polars::frame::DataFrame {
         polars::frame::DataFrame::new_no_checks(polars_series)
     }
 }
+
+#[cfg(feature = "polars")]
+impl From<polars::frame::DataFrame> for DataFrame {
+    fn from(df: polars::frame::DataFrame) -> DataFrame {
+        let pl_series: Vec<polars::series::Series> = df.into();
+        let names: Vec<String> = pl_series.iter().map(|s| s.name().to_owned()).collect();
+        let series: Vec<Series> = pl_series.into_iter().map(|v| v.to_arrow(0)).collect();
+        let mut df = DataFrame::new(series.first().map_or(0, |s| s.len()), Some(series.len()));
+        for (s, name) in series.into_iter().zip(names) {
+            df.add_series0(&name, s).unwrap();
+        }
+        df
+    }
+}
