@@ -74,6 +74,10 @@ ordering. Let us correct the ordering back to normal:
 df.set_ordering(&["voltage", "temp1", "temp2", "temp3"]);
 ```
 
+### Others
+
+Check the documentation: <https://docs.rs/myval>
+
 ## Limitations
 
 * Myval is not dedicated for data engineering. Use Polars.
