@@ -23,7 +23,7 @@ polars = { version = "0.28.0", optional = true }
 sqlx = { version = "0.6.3", features = ["chrono", "postgres", "runtime-tokio-native-tls"], optional = true }
 
 [lib]
-name = "arrow_util"
+name = "myval"
 path = "src/lib.rs"
 
 [features]
