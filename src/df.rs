@@ -206,6 +206,12 @@ impl DataFrame {
     pub fn set_metadata(&mut self, metadata: Metadata) {
         self.metadata = metadata;
     }
+    /// set metadata field
+    #[inline]
+    pub fn set_metadata_field(&mut self, metadata_field: &str, value: &str) {
+        self.metadata
+            .insert(metadata_field.to_owned(), value.to_owned());
+    }
     /// Column names
     #[inline]
     pub fn names(&self) -> Vec<&str> {
@@ -522,7 +528,7 @@ impl DataFrame {
             Err(Error::NotFound(name.to_owned()))
         }
     }
-    pub fn col_metadata_at(&mut self, index: usize) -> Result<&Metadata, Error> {
+    pub fn col_metadata_at(&self, index: usize) -> Result<&Metadata, Error> {
         if let Some(field) = self.fields.get(index) {
             Ok(&field.metadata)
         } else {
@@ -536,6 +542,36 @@ impl DataFrame {
             Err(Error::OutOfBounds)
         }
     }
+    pub fn set_col_metadata_field(
+        &mut self,
+        name: &str,
+        metadata_field: &str,
+        value: &str,
+    ) -> Result<(), Error> {
+        if let Some(field) = self.fields.iter_mut().find(|field| field.name == name) {
+            field
+                .metadata
+                .insert(metadata_field.to_owned(), value.to_owned());
+            Ok(())
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    pub fn set_col_metadata_field_at(
+        &mut self,
+        index: usize,
+        metadata_field: &str,
+        value: &str,
+    ) -> Result<(), Error> {
+        if let Some(field) = self.fields.get_mut(index) {
+            field
+                .metadata
+                .insert(metadata_field.to_owned(), value.to_owned());
+            Ok(())
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    }
     #[inline]
     pub fn set_db_push_metadata0(&mut self, table: &str) -> Result<(), Error> {
         self.set_db_push_metadata(table, &[])
@@ -543,8 +579,7 @@ impl DataFrame {
     pub fn set_db_push_metadata(&mut self, table: &str, keys: &[&str]) -> Result<(), Error> {
         self.metadata.insert("table".to_owned(), table.to_owned());
         for key in keys {
-            self.col_metadata_mut(key)?
-                .insert("key".to_owned(), "1".to_owned());
+            self.set_col_metadata_field(key, "key", "1")?;
         }
         Ok(())
     }
