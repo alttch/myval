@@ -2,7 +2,7 @@ use chrono::Local;
 use std::fmt;
 
 mod df;
-pub use df::{Chunk, DataFrame, DataType, Schema, TimeUnit};
+pub use df::{Chunk, DataFrame, DataType, Schema, Series, TimeUnit};
 
 #[derive(Debug)]
 pub enum Error {

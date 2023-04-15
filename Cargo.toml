@@ -1,10 +1,10 @@
 [package]
-name = "arrow_util"
-version = "0.1.2"
+name = "myval"
+version = "0.1.3"
 edition = "2021"
 authors = ["Serhij S. <div@altertech.com>"]
 license = "Apache-2.0"
-repository = "https://github.com/alttch/arrow-util"
+repository = "https://github.com/alttch/myval"
 description = "Tools for Apache Arrow"
 readme = "README.md"
 keywords = ["arrow", "dataframe", "database", "convert"]
