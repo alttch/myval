@@ -29,6 +29,7 @@ pub struct DataFrame {
     fields: Vec<Field>,
     data: Vec<Series>,
     rows: usize,
+    metadata: Option<Metadata>,
 }
 
 macro_rules! convert {
@@ -68,6 +69,7 @@ impl DataFrame {
             data: Vec::with_capacity(cols.unwrap_or_default()),
             rows,
             fields: Vec::with_capacity(cols.unwrap_or_default()),
+            metadata: None,
         }
     }
     /// Create a new time-series data frame from f64 timestamps
@@ -109,8 +111,13 @@ impl DataFrame {
                 .collect::<Vec<Option<i64>>>(),
         )
         .boxed();
-        df.add_series("time", ts, DataType::Timestamp(time_unit, tz.into()))
-            .unwrap();
+        df.add_series(
+            "time",
+            ts,
+            Some(DataType::Timestamp(time_unit, tz.into())),
+            None,
+        )
+        .unwrap();
         df
     }
     /// Create a new time-series data frame from f64 timestamps and convert them to rfc3339 strings
@@ -149,10 +156,15 @@ impl DataFrame {
             fields: schema.fields.clone(),
             data,
             rows,
+            metadata: Some(schema.metadata.clone()),
         }
     }
     /// Create a data frame from vector of fields and vector of series
-    pub fn from_parts(fields: Vec<Field>, data: Vec<Series>) -> Result<Self, Error> {
+    pub fn from_parts(
+        fields: Vec<Field>,
+        data: Vec<Series>,
+        metadata: Option<Metadata>,
+    ) -> Result<Self, Error> {
         let rows = if let Some(x) = data.first() {
             let rows = x.len();
             for s in data.iter().skip(1) {
@@ -164,15 +176,30 @@ impl DataFrame {
         } else {
             0
         };
-        Ok(Self { fields, data, rows })
+        Ok(Self {
+            fields,
+            data,
+            rows,
+            metadata,
+        })
     }
-    /// Split the data frame into vector of fields and vector of series
-    pub fn into_parts(self) -> (Vec<Field>, Vec<Series>) {
-        (self.fields, self.data)
+    /// Split the data frame into vector of fields, vector of series and metadata
+    pub fn into_parts(self) -> (Vec<Field>, Vec<Series>, Option<Metadata>) {
+        (self.fields, self.data, self.metadata)
     }
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
+    }
+    /// metadata
+    #[inline]
+    pub fn metadata(&self) -> Option<&Metadata> {
+        self.metadata.as_ref()
+    }
+    /// metadata mutable
+    #[inline]
+    pub fn metadata_mut(&mut self) -> Option<&mut Metadata> {
+        self.metadata.as_mut()
     }
     /// Column names
     #[inline]
@@ -194,10 +221,15 @@ impl DataFrame {
         &mut self,
         name: &str,
         series: Series,
-        data_type: DataType,
+        data_type: Option<DataType>,
+        metadata: Option<Metadata>,
     ) -> Result<(), Error> {
         if series.len() == self.rows {
-            self.fields.push(Field::new(name, data_type, true));
+            let mut field = Field::new(name, data_type.unwrap_or(series.data_type().clone()), true);
+            if let Some(meta) = metadata {
+                field = field.with_metadata(meta);
+            }
+            self.fields.push(field);
             self.data.push(series);
             Ok(())
         } else {
@@ -207,8 +239,7 @@ impl DataFrame {
     /// Add series to the data frame as a new column and use the same type as the series
     #[inline]
     pub fn add_series0(&mut self, name: &str, series: Series) -> Result<(), Error> {
-        let dt = series.data_type().clone();
-        self.add_series(name, series, dt)
+        self.add_series(name, series, None, None)
     }
     /// Insert series to the data frame as a new column and specify its type
     pub fn insert_series(
@@ -216,11 +247,17 @@ impl DataFrame {
         name: &str,
         series: Series,
         index: usize,
-        data_type: DataType,
+        data_type: Option<DataType>,
+        metadata: Option<Metadata>,
     ) -> Result<(), Error> {
         if index <= self.data.len() {
             if series.len() == self.rows {
-                self.fields.insert(index, Field::new(name, data_type, true));
+                let mut field =
+                    Field::new(name, data_type.unwrap_or(series.data_type().clone()), true);
+                if let Some(meta) = metadata {
+                    field = field.with_metadata(meta);
+                }
+                self.fields.insert(index, field);
                 self.data.insert(index, series);
                 Ok(())
             } else {
@@ -238,8 +275,7 @@ impl DataFrame {
         series: Series,
         index: usize,
     ) -> Result<(), Error> {
-        let dt = series.data_type().clone();
-        self.insert_series(name, series, index, dt)
+        self.insert_series(name, series, index, None, None)
     }
     /// Create a vector of sliced series
     pub fn try_series_sliced(&self, offset: usize, length: usize) -> Result<Vec<Series>, Error> {
@@ -266,6 +302,7 @@ impl DataFrame {
                 data: self.data.iter().map(|d| d.sliced(offset, length)).collect(),
                 rows: length,
                 fields: self.fields.clone(),
+                metadata: self.metadata.clone(),
             })
         } else {
             Err(Error::OutOfBounds)
@@ -340,7 +377,7 @@ impl DataFrame {
         Ok(buf)
     }
     /// Create a data frame from a complete IPC block
-    pub fn from_ipc_block(block: &[u8]) -> Result<(Self, Metadata), ArrowError> {
+    pub fn from_ipc_block(block: &[u8]) -> Result<Self, ArrowError> {
         let mut buf = std::io::Cursor::new(block);
         let meta = arrow2::io::ipc::read::read_stream_metadata(&mut buf)?;
         let reader = StreamReader::new(buf, meta, None);
@@ -352,11 +389,26 @@ impl DataFrame {
                 StreamState::Some(chunk) => {
                     let data = chunk.into_arrays();
                     let rows = data.first().map_or(0, |v| v.len());
-                    return Ok((Self { fields, data, rows }, metadata));
+                    return Ok(Self {
+                        fields,
+                        data,
+                        rows,
+                        metadata: if metadata.is_empty() {
+                            None
+                        } else {
+                            Some(metadata)
+                        },
+                    });
                 }
             }
         }
-        Ok((DataFrame::new0(0), metadata))
+        let mut df = DataFrame::new0(0);
+        df.metadata = if metadata.is_empty() {
+            Some(metadata)
+        } else {
+            None
+        };
+        Ok(df)
     }
     /// Pop series by name
     pub fn pop_series(&mut self, name: &str) -> Result<(Series, DataType), Error> {
@@ -441,6 +493,24 @@ impl DataFrame {
             Err(Error::OutOfBounds)
         }
     }
+    /// Override field meta data
+    pub fn set_col_metadata(&mut self, name: &str, metadata: Metadata) -> Result<(), Error> {
+        if let Some(field) = self.fields.iter_mut().find(|field| field.name == name) {
+            field.metadata = metadata;
+            Ok(())
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    /// Override field meta data by index
+    pub fn set_col_metadata_at(&mut self, index: usize, metadata: Metadata) -> Result<(), Error> {
+        if let Some(field) = self.fields.get_mut(index) {
+            field.metadata = metadata;
+            Ok(())
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    }
 }
 
 impl From<DataFrame> for Chunk<Box<dyn Array>> {
@@ -461,7 +531,7 @@ impl TryFrom<DataFrame> for Vec<u8> {
 #[cfg(feature = "polars")]
 impl From<DataFrame> for polars::frame::DataFrame {
     fn from(df: DataFrame) -> polars::frame::DataFrame {
-        let (fields, data) = df.into_parts();
+        let (fields, data, _) = df.into_parts();
         let polars_series = unsafe {
             data.into_iter()
                 .zip(fields)
