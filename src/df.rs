@@ -316,7 +316,7 @@ impl DataFrame {
     /// Generate schema object
     #[inline]
     pub fn schema(&self) -> Schema {
-        Schema::from(self.fields.clone())
+        Schema::from(self.fields.clone()).with_metadata(self.metadata.clone())
     }
     #[inline]
     pub fn rows(&self) -> usize {
@@ -366,14 +366,14 @@ impl DataFrame {
     }
     /// Convert into IPC parts: schema + chunk
     pub fn into_ipc_parts(self) -> (Schema, Chunk<Box<dyn Array + 'static>>) {
-        let schema = Schema::from(self.fields);
+        let schema = Schema::from(self.fields).with_metadata(self.metadata);
         let chunk = Chunk::new(self.data);
         (schema, chunk)
     }
     /// Convert into IPC ready-to-send block
     pub fn into_ipc_block(self) -> Result<Vec<u8>, ArrowError> {
         let mut buf = Vec::new();
-        let schema = self.schema();
+        let schema = Schema::from(self.fields).with_metadata(self.metadata);
         let chunk = Chunk::new(self.data);
         let mut writer = StreamWriter::new(&mut buf, WriteOptions::default());
         writer.start(&schema, None)?;
@@ -504,6 +504,34 @@ impl DataFrame {
         if let Some(field) = self.fields.get_mut(index) {
             field.metadata = metadata;
             Ok(())
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    }
+    pub fn col_metadata(&self, name: &str) -> Result<&Metadata, Error> {
+        if let Some(field) = self.fields.iter().find(|field| field.name == name) {
+            Ok(&field.metadata)
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    pub fn col_metadata_mut(&mut self, name: &str) -> Result<&mut Metadata, Error> {
+        if let Some(field) = self.fields.iter_mut().find(|field| field.name == name) {
+            Ok(&mut field.metadata)
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    pub fn col_metadata_at(&mut self, index: usize) -> Result<&Metadata, Error> {
+        if let Some(field) = self.fields.get(index) {
+            Ok(&field.metadata)
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    }
+    pub fn col_metadata_mut_at(&mut self, index: usize) -> Result<&mut Metadata, Error> {
+        if let Some(field) = self.fields.get_mut(index) {
+            Ok(&mut field.metadata)
         } else {
             Err(Error::OutOfBounds)
         }
