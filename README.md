@@ -6,7 +6,7 @@
 
 ## What is Myval?
 
-Mýval is translated from Czech as raccoon.
+Mýval [m'ival] is translated from Czech as raccoon.
 
 ## Why not a bear-name?
 
