@@ -5,7 +5,7 @@ all:
 
 release: publish-crate tag
 
-publish-create:
+publish-crate:
 	cargo publish
 
 tag:
