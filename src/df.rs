@@ -572,17 +572,6 @@ impl DataFrame {
             Err(Error::OutOfBounds)
         }
     }
-    #[inline]
-    pub fn set_db_push_metadata0(&mut self, table: &str) -> Result<(), Error> {
-        self.set_db_push_metadata(table, &[])
-    }
-    pub fn set_db_push_metadata(&mut self, table: &str, keys: &[&str]) -> Result<(), Error> {
-        self.metadata.insert("table".to_owned(), table.to_owned());
-        for key in keys {
-            self.set_col_metadata_field(key, "key", "1")?;
-        }
-        Ok(())
-    }
 }
 
 impl From<DataFrame> for Chunk<Box<dyn Array>> {
