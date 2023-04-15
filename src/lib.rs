@@ -1,3 +1,4 @@
+#![ doc = include_str!( concat!( env!( "CARGO_MANIFEST_DIR" ), "/", "README.md" ) ) ]
 use chrono::Local;
 use std::fmt;
 
