@@ -26,6 +26,8 @@ let polars_df = polars::frame::DataFrame::from(myval_df);
 let myval_df = myval::DataFrame::from(polars_df);
 ```
 
+As well as Polars, Myval is based on [arrow2](https://crates.io/crates/arrow2).
+
 ## Some tricks
 
 ### IPC
