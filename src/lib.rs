@@ -11,7 +11,7 @@ pub enum Error {
     TypeMismatch,
     NotFound(String),
     Unimplemented(String),
-    Other(Box<dyn std::error::Error>),
+    Other(String),
     #[cfg(feature = "sqlx")]
     Database(sqlx::Error),
 }
@@ -35,6 +35,13 @@ impl fmt::Display for Error {
             #[cfg(feature = "sqlx")]
             Error::Database(e) => write!(f, "database error: {}", e),
         }
+    }
+}
+
+impl From<Box<dyn std::error::Error>> for Error {
+    #[inline]
+    fn from(err: Box<dyn std::error::Error>) -> Self {
+        Self::Other(err.to_string())
     }
 }
 
