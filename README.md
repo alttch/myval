@@ -43,7 +43,7 @@ Need to send a data frame back? Convert it to Arrow stream block with a single
 line of code:
 
 ```rust
-let buf = df.into_ipc_block();
+let buf = df.into_ipc_block().unwrap();
 ```
 
 Need to send sliced? No problem, there are methods which can easily return
