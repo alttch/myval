@@ -100,7 +100,7 @@ let pool = Arc::new(PgPoolOptions::new()
     .connect("postgres://postgres:welcome@localhost/postgres")
     .await.unwrap());
 let max_size = 100_000;
-let stream = myval::db::postgres::fetch("select * from test".to_owned(),
+let mut stream = myval::db::postgres::fetch("select * from test".to_owned(),
     Some(max_size), pool.clone());
 // the stream returns data frames one by one with max data frame size (in
 // bytes) = max_size
@@ -134,7 +134,7 @@ if let Some(dbparams) = df.metadata().get("database") {
 Let us push Polars data frame into a PostgreSQL database:
 
 ```rust,ignore
-let df = myval::DataFrame::from(polars_df);
+let mut df = myval::DataFrame::from(polars_df);
 df.metadata_mut().insert(
     // set "database" metadata field
     "database".to_owned(),
