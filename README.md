@@ -35,8 +35,8 @@ As well as Polars, Myval is based on [arrow2](https://crates.io/crates/arrow2).
 
 ### IPC
 
-Consider there is a Arrow stream block (Schema+Chunk) received from e.g. RPC or
-Pub/Sub. Convert the block into a Myval data frame:
+Consider there is an Arrow stream block (Schema+Chunk) received from e.g. RPC
+or Pub/Sub. Convert the block into a Myval data frame:
 
 ```rust,ignore
 let df = myval::DataFrame::from_ipc_block(&buf).unwrap();
@@ -54,8 +54,8 @@ sliced series, sliced data frames or IPC chunks.
 
 ### Overriding data types
 
-Consider there is a i64-column "time" which contains nanosecond timestamps. Let
-us override its data type:
+Consider there is an i64-column "time" which contains nanosecond timestamps.
+Let us override its data type:
 
 ```rust,ignore
 use myval::{DataType, TimeUnit};
@@ -86,7 +86,90 @@ df.set_ordering(&["voltage", "temp1", "temp2", "temp3"]);
 
 Check the documentation: <https://docs.rs/myval>
 
-## Limitations
+## Working with databases
+
+Arrow provides several ways working with databases. Myval additionally provides
+tools to work with PostgreSQL databases in the easy way via the popular
+[sqlx](https://crates.io/crates/sqlx) crate ("postgres" feature must be
+enabled):
+
+### Fetching data from a data base
+
+```rust,ignore
+let pool = Arc::new(PgPoolOptions::new()
+    .connect("postgres://postgres:welcome@localhost/postgres")
+    .await.unwrap());
+let max_chunk_size = 100_000;
+let stream = myval::db::postgres::fetch("select * from test".to_owned(),
+    Some(max_chunk_size), pool.clone());
+while let Some(df) = stream.try_next().await.unwrap() {
+    // do some stuff
+}
+```
+
+Why does the stream object require Arc<PgPool>? There is one important reason:
+such stream objects are static and can be stored anywhere, e.g. used as cursors
+in a client-server architecture.
+
+### Pushing data into a database
+
+#### Server
+
+```rust,ignore
+let df = DataFrame::from_ipc_block(payload).map_err(eva_common::Error::failed)?;
+// The first received data frame must have "database" field in its schema
+// metadata. Next data frames  
+if let Some(dbparams) = df.metadata().get("database") {
+	let params: myval::db::postgres::Params = serde_json::from_str(dbparams)
+		.unwrap();
+	let processed_rows: usize = myval::db::postgres::push(&df, &params,
+		&pool).await.unwrap();
+}
+```
+
+#### Client
+
+Let us push Polars data frame into a PostgreSQL database:
+
+```rust,ignore
+let df = myval::DataFrame::from(polars_df);
+df.metadata_mut().insert(
+    // set "database" metadata field
+	"database".to_owned(),
+	serde_json::to_string(&json!({
+        // table, required
+		"table": "test",
+        // PostgreSQL schema, optional
+		"postgres": { "schema": "public" },
+        // keys, required if the table has got keys/unique indexes
+		"keys": ["id"],
+        // some field parameters
+		"fields": {
+            // another way to declare a key field
+			//"id": { "key": true },
+			// the following data frame columns contain strings which must be
+            // sent to the database as JSON (for json/jsonb PostgreSQL types)
+			"data1": { "json": true },
+			"data2": { "json": true }
+		}
+	}))?,
+);
+// send the data frame to a server in a single or multiple chunks/blocks
+```
+
+#### PostgreSQL types supported
+
+* BOOL, INT2 (16-bit int), INT4 (32-bit int), INT8 (64-bit int), FLOAT4 (32-bit
+float), FLOAT8 (64-bit float)
+
+* TIMESTAMP, TIMESTAMPTZ (time zone information is discarded as Arrow arrays
+can not have different time zone for each record)
+
+* CHAR, VARCHAR
+
+* JSON/JSONB (encoded back to strings as LargeUtf8)
+
+## General limitations
 
 * Myval is not designed for data engineering. Use Polars.
 

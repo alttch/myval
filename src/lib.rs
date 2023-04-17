@@ -5,6 +5,8 @@ use std::fmt;
 mod df;
 pub use df::{Chunk, DataFrame, DataType, Metadata, Schema, Series, TimeUnit};
 
+pub mod db;
+
 #[derive(Debug)]
 pub enum Error {
     OutOfBounds,
@@ -15,6 +17,8 @@ pub enum Error {
     Other(String),
     #[cfg(feature = "sqlx")]
     Database(sqlx::Error),
+    #[cfg(feature = "serde_json")]
+    Json(serde_json::Error),
 }
 
 impl Error {
@@ -38,6 +42,13 @@ impl From<sqlx::Error> for Error {
     }
 }
 
+#[cfg(feature = "serde_json")]
+impl From<serde_json::Error> for Error {
+    fn from(err: serde_json::Error) -> Self {
+        Error::Json(err)
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -49,6 +60,8 @@ impl fmt::Display for Error {
             Error::Other(e) => write!(f, "{}", e),
             #[cfg(feature = "sqlx")]
             Error::Database(e) => write!(f, "database error: {}", e),
+            #[cfg(feature = "serde_json")]
+            Error::Json(e) => write!(f, "de/serialize error: {}", e),
         }
     }
 }

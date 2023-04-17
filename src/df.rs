@@ -18,12 +18,6 @@ use chrono::{DateTime, Local, NaiveDateTime, SecondsFormat, Utc};
 pub type Series = Box<(dyn Array + 'static)>;
 
 /// Base data frame class
-///
-/// The data frame can be automatically converted into:
-///
-/// IPC chunk (Chunk::from)
-/// Ready-to-send IPC block (Vec<u8>::from)
-/// Polars data frame (polars::frame::DateFrame::from, "polars" feature required)
 #[derive(Default, Clone)]
 pub struct DataFrame {
     fields: Vec<Field>,
@@ -606,14 +600,14 @@ impl From<DataFrame> for polars::frame::DataFrame {
 impl From<polars::frame::DataFrame> for DataFrame {
     fn from(mut polars_df: polars::frame::DataFrame) -> DataFrame {
         match polars_df.n_chunks() {
-            0 => return DataFrame::new0(0),
+            0 => return DataFrame::new0(),
             2.. => polars_df = polars_df.agg_chunks(),
             _ => {}
         }
         let pl_series: Vec<polars::series::Series> = polars_df.into();
         let names: Vec<String> = pl_series.iter().map(|s| s.name().to_owned()).collect();
         let series: Vec<Series> = pl_series.into_iter().map(|v| v.to_arrow(0)).collect();
-        let mut df = DataFrame::new(series.first().map_or(0, |s| s.len()), Some(series.len()));
+        let mut df = DataFrame::new(Some(series.len()));
         for (s, name) in series.into_iter().zip(names) {
             df.add_series0(&name, s).unwrap();
         }
