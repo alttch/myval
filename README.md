@@ -93,7 +93,7 @@ tools to work with PostgreSQL databases in the easy way via the popular
 [sqlx](https://crates.io/crates/sqlx) crate ("postgres" feature must be
 enabled):
 
-### Fetching data from a data base
+### Fetching data from a database
 
 ```rust,ignore
 let pool = Arc::new(PgPoolOptions::new()
