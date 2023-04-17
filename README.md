@@ -21,7 +21,7 @@ which is focused on data transformation and IPC.
 Because Arrow has got the standardized data layout, data frames can be
 converted to Polars and vice-versa with zero-copy:
 
-```rust
+```rust,ignore
 let polars_df = polars::frame::DataFrame::from(myval_df);
 let myval_df = myval::DataFrame::from(polars_df);
 ```
@@ -35,14 +35,14 @@ As well as Polars, Myval is based on [arrow2](https://crates.io/crates/arrow2).
 Consider there is a Arrow stream block (Schema+Chunk) received from e.g. RPC or
 Pub/Sub. Convert the block into a Myval data frame:
 
-```rust
+```rust,ignore
 let df = myval::DataFrame::from_ipc_block(&buf).unwrap();
 ```
 
 Need to send a data frame back? Convert it to Arrow stream block with a single
 line of code:
 
-```rust
+```rust,ignore
 let buf = df.into_ipc_block().unwrap();
 ```
 
@@ -54,7 +54,7 @@ sliced series, sliced data frames or IPC chunks.
 Consider there is a i64-column "time" which contains nanosecond timestamps. Let
 us override its data type:
 
-```rust
+```rust,ignore
 use myval::{DataType, TimeUnit};
 
 df.set_data_type("time",
@@ -65,7 +65,7 @@ df.set_data_type("time",
 
 Consider there is a utf8-column "value" which should be parsed to floats:
 
-```rust
+```rust,ignore
 df.parse_float("value").unwrap();
 ```
 
@@ -75,7 +75,7 @@ Consider there is a Myval data frame with columns "voltage", "temp1", "temp2",
 "temp3" which has received data from a server column-by-column in random
 ordering. Let us correct the ordering back to normal:
 
-```rust
+```rust,ignore
 df.set_ordering(&["voltage", "temp1", "temp2", "temp3"]);
 ```
 
