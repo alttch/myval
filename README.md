@@ -107,7 +107,7 @@ while let Some(df) = stream.try_next().await.unwrap() {
 }
 ```
 
-Why does the stream object require Arc<PgPool>? There is one important reason:
+Why does the stream object require Arc&lt;PgPool&gt;? There is one important reason:
 such stream objects are static and can be stored anywhere, e.g. used as cursors
 in a client-server architecture.
 
