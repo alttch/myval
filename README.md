@@ -4,6 +4,9 @@
   <a href="https://docs.rs/myval"><img alt="docs.rs page" src="https://docs.rs/myval/badge.svg"></img></a>
 </h2>
 
+<img src="https://raw.githubusercontent.com/alttch/myval/main/media/myval_w.png"
+width="200" />
+
 ## What is Myval?
 
 Mýval (pronounced as [m'ival]) is translated from Czech as raccoon.
