@@ -116,7 +116,7 @@ in a client-server architecture.
 #### Server
 
 ```rust,ignore
-let df = DataFrame::from_ipc_block(payload).map_err(eva_common::Error::failed)?;
+let df = DataFrame::from_ipc_block(payload).unwrap();
 // The first received data frame must have "database" field in its schema
 // metadata. Next data frames  
 if let Some(dbparams) = df.metadata().get("database") {
