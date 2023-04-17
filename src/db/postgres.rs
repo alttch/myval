@@ -169,7 +169,7 @@ fn pg_join(vals: &[&str]) -> Result<String, Error> {
 }
 
 fn pg_vals(len: usize) -> Result<String, Error> {
-    let mut s = String::new();
+    let mut s = String::with_capacity(len * 3);
     for i in 1..=len {
         if !s.is_empty() {
             write!(s, ",")?;
