@@ -99,9 +99,9 @@ enabled):
 let pool = Arc::new(PgPoolOptions::new()
     .connect("postgres://postgres:welcome@localhost/postgres")
     .await.unwrap());
-let max_chunk_size = 100_000;
+let max_size = 100_000;
 let stream = myval::db::postgres::fetch("select * from test".to_owned(),
-    Some(max_chunk_size), pool.clone());
+    Some(max_size), pool.clone());
 while let Some(df) = stream.try_next().await.unwrap() {
     // do some stuff
 }
