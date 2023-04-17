@@ -104,7 +104,6 @@ let stream = myval::db::postgres::fetch("select * from test".to_owned(),
     Some(max_size), pool.clone());
 // the stream returns data frames one by one with max data frame size (in
 // bytes) = max_size
-
 while let Some(df) = stream.try_next().await.unwrap() {
     // do some stuff
 }
