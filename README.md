@@ -169,7 +169,7 @@ can not have different time zone for each record)
 
 * CHAR, VARCHAR
 
-* JSON/JSONB (encoded back to strings as LargeUtf8)
+* JSON/JSONB (encoded back to strings as LargeUtf8 when fetched)
 
 ## General limitations
 
