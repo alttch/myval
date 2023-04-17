@@ -28,7 +28,6 @@ pub type Series = Box<(dyn Array + 'static)>;
 pub struct DataFrame {
     fields: Vec<Field>,
     data: Vec<Series>,
-    rows: usize,
     metadata: Metadata,
 }
 
@@ -57,17 +56,16 @@ macro_rules! convert {
 }
 
 impl DataFrame {
-    /// Create a new data frame with fixed number of rows and no columns
+    /// Create a new data frame with no columns
     #[inline]
-    pub fn new0(rows: usize) -> Self {
-        Self::new(rows, None)
+    pub fn new0() -> Self {
+        Self::new(None)
     }
-    /// Create a new data frame with fixed number of rows and allocate columns
+    /// Create a new data frame and allocate columns
     #[inline]
-    pub fn new(rows: usize, cols: Option<usize>) -> Self {
+    pub fn new(cols: Option<usize>) -> Self {
         Self {
             data: Vec::with_capacity(cols.unwrap_or_default()),
-            rows,
             fields: Vec::with_capacity(cols.unwrap_or_default()),
             metadata: <_>::default(),
         }
@@ -83,7 +81,7 @@ impl DataFrame {
         tz: TimeZone,
         time_unit: TimeUnit,
     ) -> Self {
-        let mut df = Self::new(time_series.len(), cols.map(|c| c + 1));
+        let mut df = Self::new(cols.map(|c| c + 1));
         #[allow(clippy::cast_possible_truncation)]
         #[allow(clippy::cast_possible_wrap)]
         let ts = Int64Array::from(
@@ -126,7 +124,7 @@ impl DataFrame {
     ///
     /// should not panic
     pub fn new_timeseries_from_float_rfc3339(time_series: Vec<f64>, cols: Option<usize>) -> Self {
-        let mut df = Self::new(time_series.len(), cols.map(|c| c + 1));
+        let mut df = Self::new(cols.map(|c| c + 1));
         let ts: Vec<Option<String>> = time_series
             .iter()
             .map(|v| {
@@ -151,11 +149,9 @@ impl DataFrame {
     /// Create a data frame from IPC chunk and schema
     pub fn from_chunk(chunk: Chunk<Box<dyn Array + 'static>>, schema: &Schema) -> Self {
         let data = chunk.into_arrays();
-        let rows = data.first().map_or(0, |v| v.len());
         Self {
             fields: schema.fields.clone(),
             data,
-            rows,
             metadata: schema.metadata.clone(),
         }
     }
@@ -165,21 +161,17 @@ impl DataFrame {
         data: Vec<Series>,
         metadata: Option<Metadata>,
     ) -> Result<Self, Error> {
-        let rows = if let Some(x) = data.first() {
+        if let Some(x) = data.first() {
             let rows = x.len();
             for s in data.iter().skip(1) {
                 if s.len() != rows {
                     return Err(Error::RowsNotMatch);
                 }
             }
-            rows
-        } else {
-            0
-        };
+        }
         Ok(Self {
             fields,
             data,
-            rows,
             metadata: metadata.unwrap_or_default(),
         })
     }
@@ -235,7 +227,7 @@ impl DataFrame {
         data_type: Option<DataType>,
         metadata: Option<Metadata>,
     ) -> Result<(), Error> {
-        if series.len() == self.rows {
+        if self.data.is_empty() || series.len() == self.data[0].len() {
             let mut field = Field::new(name, data_type.unwrap_or(series.data_type().clone()), true);
             if let Some(meta) = metadata {
                 field = field.with_metadata(meta);
@@ -262,7 +254,7 @@ impl DataFrame {
         metadata: Option<Metadata>,
     ) -> Result<(), Error> {
         if index <= self.data.len() {
-            if series.len() == self.rows {
+            if self.data.is_empty() || series.len() == self.data[0].len() {
                 let mut field =
                     Field::new(name, data_type.unwrap_or(series.data_type().clone()), true);
                 if let Some(meta) = metadata {
@@ -290,7 +282,9 @@ impl DataFrame {
     }
     /// Create a vector of sliced series
     pub fn try_series_sliced(&self, offset: usize, length: usize) -> Result<Vec<Series>, Error> {
-        if offset + length <= self.rows {
+        if self.data.is_empty() {
+            Ok(vec![])
+        } else if offset + length <= self.data[0].len() {
             Ok(self.data.iter().map(|d| d.sliced(offset, length)).collect())
         } else {
             Err(Error::OutOfBounds)
@@ -308,10 +302,11 @@ impl DataFrame {
     }
     /// Create a new data frame of sliced series
     pub fn try_sliced(&self, offset: usize, length: usize) -> Result<Self, Error> {
-        if offset + length <= self.rows {
+        if self.data.is_empty() {
+            Ok(Self::new0())
+        } else if offset + length <= self.data[0].len() {
             Ok(Self {
                 data: self.data.iter().map(|d| d.sliced(offset, length)).collect(),
-                rows: length,
                 fields: self.fields.clone(),
                 metadata: self.metadata.clone(),
             })
@@ -325,8 +320,8 @@ impl DataFrame {
         Schema::from(self.fields.clone()).with_metadata(self.metadata.clone())
     }
     #[inline]
-    pub fn rows(&self) -> usize {
-        self.rows
+    pub fn rows(&self) -> Option<usize> {
+        self.data.first().map(|v| v.len())
     }
     /// calculate approx data frame size
     ///
@@ -399,17 +394,15 @@ impl DataFrame {
                 StreamState::Waiting => continue,
                 StreamState::Some(chunk) => {
                     let data = chunk.into_arrays();
-                    let rows = data.first().map_or(0, |v| v.len());
                     return Ok(Self {
                         fields,
                         data,
-                        rows,
                         metadata,
                     });
                 }
             }
         }
-        let mut df = DataFrame::new0(0);
+        let mut df = DataFrame::new0();
         df.metadata = metadata;
         Ok(df)
     }
