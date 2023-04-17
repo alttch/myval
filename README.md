@@ -156,7 +156,7 @@ df.metadata_mut().insert(
         }
     }))?,
 );
-// send the data frame to a server in a single or multiple chunks/blocks
+// send the data frame to the server in a single or multiple chunks/blocks
 ```
 
 #### PostgreSQL types supported
