@@ -88,7 +88,7 @@ Check the documentation: <https://docs.rs/myval>
 
 ## Working with databases
 
-Arrow provides several ways working with databases. Myval additionally provides
+Arrow provides several ways to work with databases. Myval additionally provides
 tools to work with PostgreSQL databases in the easy way via the popular
 [sqlx](https://crates.io/crates/sqlx) crate ("postgres" feature must be
 enabled):
