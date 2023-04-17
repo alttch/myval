@@ -137,24 +137,24 @@ Let us push Polars data frame into a PostgreSQL database:
 let df = myval::DataFrame::from(polars_df);
 df.metadata_mut().insert(
     // set "database" metadata field
-	"database".to_owned(),
-	serde_json::to_string(&json!({
+    "database".to_owned(),
+    serde_json::to_string(&json!({
         // table, required
-		"table": "test",
+        "table": "test",
         // PostgreSQL schema, optional
-		"postgres": { "schema": "public" },
+        "postgres": { "schema": "public" },
         // keys, required if the table has got keys/unique indexes
-		"keys": ["id"],
+        "keys": ["id"],
         // some field parameters
-		"fields": {
+        "fields": {
             // another way to declare a key field
-			//"id": { "key": true },
-			// the following data frame columns contain strings which must be
+            //"id": { "key": true },
+            // the following data frame columns contain strings which must be
             // sent to the database as JSON (for json/jsonb PostgreSQL types)
-			"data1": { "json": true },
-			"data2": { "json": true }
-		}
-	}))?,
+            "data1": { "json": true },
+            "data2": { "json": true }
+        }
+    }))?,
 );
 // send the data frame to a server in a single or multiple chunks/blocks
 ```
