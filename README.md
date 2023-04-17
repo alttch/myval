@@ -118,7 +118,7 @@ in a client-server architecture.
 ```rust,ignore
 let df = DataFrame::from_ipc_block(payload).unwrap();
 // The first received data frame must have "database" field in its schema
-// metadata. Next data frames  
+// metadata. Next data frames can go without it.
 if let Some(dbparams) = df.metadata().get("database") {
 	let params: myval::db::postgres::Params = serde_json::from_str(dbparams)
 		.unwrap();
