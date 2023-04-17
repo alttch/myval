@@ -178,3 +178,6 @@ can not have different time zone for each record)
 * Myval series can contain a single chunk only and there are no plans to extend
 this. When a Polars data frame with multiple chunks is converted to Myval, the
 chunks are automatically aggregated.
+
+* Some features (conversion to Polars, PostgreSQL) are experimental, use at
+your own risk.
