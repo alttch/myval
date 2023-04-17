@@ -165,7 +165,7 @@ df.metadata_mut().insert(
 float), FLOAT8 (64-bit float)
 
 * TIMESTAMP, TIMESTAMPTZ (time zone information is discarded as Arrow arrays
-can not have different time zone for each record)
+can not have different time zones for individual records)
 
 * CHAR, VARCHAR
 
