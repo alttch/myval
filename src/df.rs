@@ -578,6 +578,13 @@ impl TryFrom<DataFrame> for Vec<u8> {
 
 #[cfg(feature = "polars")]
 impl From<DataFrame> for polars::frame::DataFrame {
+    // The conversion is done in an unsafe way and has got the following (or more) limitations:
+    //
+    // If a data frame field has got data type Timestamp with TimeUnit::Second, the time is
+    // converted incorrectly (Polars has no TimeUnit::Second support)
+    //
+    // If a data frame contains Utf8<i32> (Utf8 data type), the conversion may crash the program.
+    // The solution for now is to avoid using Utf8 and use LargeUtf8 instead.
     fn from(df: DataFrame) -> polars::frame::DataFrame {
         let (fields, data, _) = df.into_parts();
         let polars_series = unsafe {
