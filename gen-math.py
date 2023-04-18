@@ -11,14 +11,14 @@ for i in (8, 16, 32, 64, 128):
     for (kind, arr) in data:
         for op in ['add', 'sub', 'mul', 'div']:
             s = f"""
-pub fn {kind}_{op}(&mut self, name: &str, value: {kind}) -> Result<(), Error> {{
+pub fn {op}_{kind}(&mut self, name: &str, value: {kind}) -> Result<(), Error> {{
     if let Some(pos) = self.get_column_index(name) {{
-        self.{kind}_{op}_at(pos, value)
+        self.{op}_{kind}_at(pos, value)
     }} else {{
         Err(Error::NotFound(name.to_owned()))
     }}
 }}
-pub fn {kind}_{op}_at(&mut self, index: usize, value: {kind}) -> Result<(), Error> {{
+pub fn {op}_{kind}_at(&mut self, index: usize, value: {kind}) -> Result<(), Error> {{
   math_op!(self, index, {arr}, value, {kind}::{op})
 }}
 """
