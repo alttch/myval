@@ -75,10 +75,10 @@ df.parse_float("value").unwrap();
 ### Basic in-place math
 
 ```rust,ignore
-df.i64_add("col", 1_000).unwrap();
-df.i64_sub("col", 1_000).unwrap();
-df.i64_mul("col", 1_000).unwrap();
-df.i64_div("col", 1_000).unwrap();
+df.add_i64("col", 1_000).unwrap();
+df.sub_i64("col", 1_000).unwrap();
+df.mul_i64("col", 1_000).unwrap();
+df.div_i64("col", 1_000).unwrap();
 ```
 
 ### Set column ordering
