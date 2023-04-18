@@ -96,12 +96,14 @@ enabled):
 ### Fetching data from a database
 
 ```rust,ignore
+use futures::stream::{Stream, TryStreamExt};
+
 let pool = Arc::new(PgPoolOptions::new()
     .connect("postgres://postgres:welcome@localhost/postgres")
     .await.unwrap());
 let max_size = 100_000;
-let mut stream = myval::db::postgres::fetch("select * from test".to_owned(),
-    Some(max_size), pool.clone());
+let mut stream: Stram = myval::db::postgres::fetch(
+    "select * from test".to_owned(), Some(max_size), pool.clone());
 // the stream returns data frames one by one with max data frame size (in
 // bytes) = max_size
 while let Some(df) = stream.try_next().await.unwrap() {
