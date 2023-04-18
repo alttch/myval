@@ -134,6 +134,8 @@ if let Some(dbparams) = df.metadata().get("database") {
 Let us push Polars data frame into a PostgreSQL database:
 
 ```rust,ignore
+use serde_json::json;
+
 let mut df = myval::DataFrame::from(polars_df);
 df.metadata_mut().insert(
     // set "database" metadata field
