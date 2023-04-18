@@ -2,18 +2,17 @@
 extern crate arrow2_ih as arrow2;
 
 use crate::{Error, Time, TimeZone};
-use arrow2::array::{
-    Array, Float32Array, Float64Array, Int128Array, Int16Array, Int32Array, Int64Array, Int8Array,
-    UInt16Array, UInt32Array, UInt64Array, UInt8Array, Utf8Array,
-};
+use arrow2::array::{Array, Int64Array, PrimitiveArray, Utf8Array};
 pub use arrow2::chunk::Chunk;
 use arrow2::datatypes::Field;
 pub use arrow2::datatypes::{DataType, Metadata, Schema, TimeUnit};
 use arrow2::error::Error as ArrowError;
 use arrow2::io::ipc::read::{StreamReader, StreamState};
 use arrow2::io::ipc::write::{StreamWriter, WriteOptions};
+use arrow2::types::NativeType;
 use chrono::{DateTime, Local, NaiveDateTime, SecondsFormat, Utc};
 use std::ops::{Add, Div, Mul, Sub};
+use std::str::FromStr;
 
 /// Series type, alias for boxed arrow2 array
 ///
@@ -27,49 +26,6 @@ pub struct DataFrame {
     fields: Vec<Field>,
     data: Vec<Series>,
     metadata: Metadata,
-}
-
-macro_rules! convert {
-    ($df: expr, $index: expr, $arr: tt, $dtype: expr) => {
-        if let Some(series) = $df.data.get($index) {
-            let values: &Utf8Array<i64> = series
-                .as_any()
-                .downcast_ref()
-                .ok_or_else(|| Error::TypeMismatch)?;
-            let mut dt: Vec<Option<_>> = Vec::with_capacity(values.len());
-            for val in values {
-                dt.push(if let Some(s) = val {
-                    s.parse().ok()
-                } else {
-                    None
-                });
-            }
-            $df.data[$index] = $arr::from(dt).boxed();
-            $df.fields[$index].data_type = $dtype;
-            Ok(())
-        } else {
-            Err(Error::OutOfBounds)
-        }
-    };
-}
-
-macro_rules! math_op {
-    ($df: expr, $index: expr, $arr: tt, $value: expr, $fn: path) => {
-        if let Some(series) = $df.data.get($index) {
-            let values: &$arr = series
-                .as_any()
-                .downcast_ref()
-                .ok_or_else(|| Error::TypeMismatch)?;
-            let dt: Vec<Option<_>> = values
-                .into_iter()
-                .map(|v| v.map(|n| $fn((*n), $value)))
-                .collect();
-            $df.data[$index] = $arr::from(dt).boxed();
-            Ok(())
-        } else {
-            Err(Error::OutOfBounds)
-        }
-    };
 }
 
 impl DataFrame {
@@ -455,29 +411,40 @@ impl DataFrame {
             Err(Error::NotFound(name.to_owned()))
         }
     }
-    /// Parse string column values to integers
-    pub fn parse_int(&mut self, name: &str) -> Result<(), Error> {
+    /// Parse string column values
+    pub fn parse<T>(&mut self, name: &str) -> Result<(), Error>
+    where
+        T: NativeType + FromStr,
+    {
         if let Some(pos) = self.get_column_index(name) {
-            self.parse_int_at(pos)
+            self.parse_at::<T>(pos)
         } else {
             Err(Error::NotFound(name.to_owned()))
         }
     }
-    /// Parse string column values to floats
-    pub fn parse_float(&mut self, name: &str) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.parse_float_at(pos)
+    pub fn parse_at<T>(&mut self, index: usize) -> Result<(), Error>
+    where
+        T: NativeType + FromStr,
+    {
+        if let Some(series) = self.data.get(index) {
+            let values: &Utf8Array<i64> =
+                series.as_any().downcast_ref().ok_or(Error::TypeMismatch)?;
+            let mut dt: Vec<Option<_>> = Vec::with_capacity(values.len());
+            for val in values {
+                dt.push(if let Some(s) = val {
+                    s.parse::<T>().ok()
+                } else {
+                    None
+                });
+            }
+            let arr = PrimitiveArray::<T>::from(dt);
+            let dtype = arr.data_type().clone();
+            self.data[index] = arr.boxed();
+            self.fields[index].data_type = dtype;
+            Ok(())
         } else {
-            Err(Error::NotFound(name.to_owned()))
+            Err(Error::OutOfBounds)
         }
-    }
-    /// Parse string column values to integers
-    pub fn parse_int_at(&mut self, index: usize) -> Result<(), Error> {
-        convert!(self, index, Int64Array, DataType::Int64)
-    }
-    /// Parse string column values to floats
-    pub fn parse_float_at(&mut self, index: usize) -> Result<(), Error> {
-        convert!(self, index, Float64Array, DataType::Float64)
     }
     /// Set field name by index
     pub fn set_name_at(&mut self, index: usize, new_name: &str) -> Result<(), Error> {
@@ -582,491 +549,110 @@ impl DataFrame {
             Err(Error::OutOfBounds)
         }
     }
-    // auth-generated
-    pub fn add_i8(&mut self, name: &str, value: i8) -> Result<(), Error> {
+    pub fn add<T>(&mut self, name: &str, value: T) -> Result<(), Error>
+    where
+        T: NativeType + Add,
+        Vec<Option<<T as Add>::Output>>: AsRef<[Option<T>]>,
+    {
         if let Some(pos) = self.get_column_index(name) {
-            self.add_i8_at(pos, value)
+            self.add_at(pos, value)
         } else {
             Err(Error::NotFound(name.to_owned()))
         }
     }
-    pub fn add_i8_at(&mut self, index: usize, value: i8) -> Result<(), Error> {
-        math_op!(self, index, Int8Array, value, i8::add)
+    pub fn add_at<T>(&mut self, index: usize, value: T) -> Result<(), Error>
+    where
+        T: NativeType + Add,
+        Vec<Option<<T as Add>::Output>>: AsRef<[Option<T>]>,
+    {
+        if let Some(series) = self.data.get(index) {
+            let values: &PrimitiveArray<T> =
+                series.as_any().downcast_ref().ok_or(Error::TypeMismatch)?;
+            let dt: Vec<Option<_>> = values.into_iter().map(|v| v.map(|n| *n + value)).collect();
+            self.data[index] = PrimitiveArray::<T>::from(dt).boxed();
+            Ok(())
+        } else {
+            Err(Error::OutOfBounds)
+        }
     }
-
-    pub fn sub_i8(&mut self, name: &str, value: i8) -> Result<(), Error> {
+    pub fn sub<T>(&mut self, name: &str, value: T) -> Result<(), Error>
+    where
+        T: NativeType + Sub,
+        Vec<Option<<T as Sub>::Output>>: AsRef<[Option<T>]>,
+    {
         if let Some(pos) = self.get_column_index(name) {
-            self.sub_i8_at(pos, value)
+            self.sub_at(pos, value)
         } else {
             Err(Error::NotFound(name.to_owned()))
         }
     }
-    pub fn sub_i8_at(&mut self, index: usize, value: i8) -> Result<(), Error> {
-        math_op!(self, index, Int8Array, value, i8::sub)
+    pub fn sub_at<T>(&mut self, index: usize, value: T) -> Result<(), Error>
+    where
+        T: NativeType + Sub,
+        Vec<Option<<T as Sub>::Output>>: AsRef<[Option<T>]>,
+    {
+        if let Some(series) = self.data.get(index) {
+            let values: &PrimitiveArray<T> =
+                series.as_any().downcast_ref().ok_or(Error::TypeMismatch)?;
+            let dt: Vec<Option<_>> = values.into_iter().map(|v| v.map(|n| *n - value)).collect();
+            self.data[index] = PrimitiveArray::<T>::from(dt).boxed();
+            Ok(())
+        } else {
+            Err(Error::OutOfBounds)
+        }
     }
-
-    pub fn mul_i8(&mut self, name: &str, value: i8) -> Result<(), Error> {
+    pub fn mul<T>(&mut self, name: &str, value: T) -> Result<(), Error>
+    where
+        T: NativeType + Mul,
+        Vec<Option<<T as Mul>::Output>>: AsRef<[Option<T>]>,
+    {
         if let Some(pos) = self.get_column_index(name) {
-            self.mul_i8_at(pos, value)
+            self.mul_at(pos, value)
         } else {
             Err(Error::NotFound(name.to_owned()))
         }
     }
-    pub fn mul_i8_at(&mut self, index: usize, value: i8) -> Result<(), Error> {
-        math_op!(self, index, Int8Array, value, i8::mul)
+    pub fn mul_at<T>(&mut self, index: usize, value: T) -> Result<(), Error>
+    where
+        T: NativeType + Mul,
+        Vec<Option<<T as Mul>::Output>>: AsRef<[Option<T>]>,
+    {
+        if let Some(series) = self.data.get(index) {
+            let values: &PrimitiveArray<T> =
+                series.as_any().downcast_ref().ok_or(Error::TypeMismatch)?;
+            let dt: Vec<Option<_>> = values.into_iter().map(|v| v.map(|n| *n * value)).collect();
+            self.data[index] = PrimitiveArray::<T>::from(dt).boxed();
+            Ok(())
+        } else {
+            Err(Error::OutOfBounds)
+        }
     }
-
-    pub fn div_i8(&mut self, name: &str, value: i8) -> Result<(), Error> {
+    pub fn div<T>(&mut self, name: &str, value: T) -> Result<(), Error>
+    where
+        T: NativeType + Div,
+        Vec<Option<<T as Div>::Output>>: AsRef<[Option<T>]>,
+    {
         if let Some(pos) = self.get_column_index(name) {
-            self.div_i8_at(pos, value)
+            self.div_at(pos, value)
         } else {
             Err(Error::NotFound(name.to_owned()))
         }
     }
-    pub fn div_i8_at(&mut self, index: usize, value: i8) -> Result<(), Error> {
-        math_op!(self, index, Int8Array, value, i8::div)
-    }
-
-    pub fn add_u8(&mut self, name: &str, value: u8) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.add_u8_at(pos, value)
+    pub fn div_at<T>(&mut self, index: usize, value: T) -> Result<(), Error>
+    where
+        T: NativeType + Div,
+        Vec<Option<<T as Div>::Output>>: AsRef<[Option<T>]>,
+    {
+        if let Some(series) = self.data.get(index) {
+            let values: &PrimitiveArray<T> =
+                series.as_any().downcast_ref().ok_or(Error::TypeMismatch)?;
+            let dt: Vec<Option<_>> = values.into_iter().map(|v| v.map(|n| *n / value)).collect();
+            self.data[index] = PrimitiveArray::<T>::from(dt).boxed();
+            Ok(())
         } else {
-            Err(Error::NotFound(name.to_owned()))
+            Err(Error::OutOfBounds)
         }
     }
-    pub fn add_u8_at(&mut self, index: usize, value: u8) -> Result<(), Error> {
-        math_op!(self, index, UInt8Array, value, u8::add)
-    }
-
-    pub fn sub_u8(&mut self, name: &str, value: u8) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.sub_u8_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn sub_u8_at(&mut self, index: usize, value: u8) -> Result<(), Error> {
-        math_op!(self, index, UInt8Array, value, u8::sub)
-    }
-
-    pub fn mul_u8(&mut self, name: &str, value: u8) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.mul_u8_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn mul_u8_at(&mut self, index: usize, value: u8) -> Result<(), Error> {
-        math_op!(self, index, UInt8Array, value, u8::mul)
-    }
-
-    pub fn div_u8(&mut self, name: &str, value: u8) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.div_u8_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn div_u8_at(&mut self, index: usize, value: u8) -> Result<(), Error> {
-        math_op!(self, index, UInt8Array, value, u8::div)
-    }
-
-    pub fn add_i16(&mut self, name: &str, value: i16) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.add_i16_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn add_i16_at(&mut self, index: usize, value: i16) -> Result<(), Error> {
-        math_op!(self, index, Int16Array, value, i16::add)
-    }
-
-    pub fn sub_i16(&mut self, name: &str, value: i16) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.sub_i16_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn sub_i16_at(&mut self, index: usize, value: i16) -> Result<(), Error> {
-        math_op!(self, index, Int16Array, value, i16::sub)
-    }
-
-    pub fn mul_i16(&mut self, name: &str, value: i16) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.mul_i16_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn mul_i16_at(&mut self, index: usize, value: i16) -> Result<(), Error> {
-        math_op!(self, index, Int16Array, value, i16::mul)
-    }
-
-    pub fn div_i16(&mut self, name: &str, value: i16) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.div_i16_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn div_i16_at(&mut self, index: usize, value: i16) -> Result<(), Error> {
-        math_op!(self, index, Int16Array, value, i16::div)
-    }
-
-    pub fn add_u16(&mut self, name: &str, value: u16) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.add_u16_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn add_u16_at(&mut self, index: usize, value: u16) -> Result<(), Error> {
-        math_op!(self, index, UInt16Array, value, u16::add)
-    }
-
-    pub fn sub_u16(&mut self, name: &str, value: u16) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.sub_u16_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn sub_u16_at(&mut self, index: usize, value: u16) -> Result<(), Error> {
-        math_op!(self, index, UInt16Array, value, u16::sub)
-    }
-
-    pub fn mul_u16(&mut self, name: &str, value: u16) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.mul_u16_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn mul_u16_at(&mut self, index: usize, value: u16) -> Result<(), Error> {
-        math_op!(self, index, UInt16Array, value, u16::mul)
-    }
-
-    pub fn div_u16(&mut self, name: &str, value: u16) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.div_u16_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn div_u16_at(&mut self, index: usize, value: u16) -> Result<(), Error> {
-        math_op!(self, index, UInt16Array, value, u16::div)
-    }
-
-    pub fn add_i32(&mut self, name: &str, value: i32) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.add_i32_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn add_i32_at(&mut self, index: usize, value: i32) -> Result<(), Error> {
-        math_op!(self, index, Int32Array, value, i32::add)
-    }
-
-    pub fn sub_i32(&mut self, name: &str, value: i32) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.sub_i32_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn sub_i32_at(&mut self, index: usize, value: i32) -> Result<(), Error> {
-        math_op!(self, index, Int32Array, value, i32::sub)
-    }
-
-    pub fn mul_i32(&mut self, name: &str, value: i32) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.mul_i32_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn mul_i32_at(&mut self, index: usize, value: i32) -> Result<(), Error> {
-        math_op!(self, index, Int32Array, value, i32::mul)
-    }
-
-    pub fn div_i32(&mut self, name: &str, value: i32) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.div_i32_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn div_i32_at(&mut self, index: usize, value: i32) -> Result<(), Error> {
-        math_op!(self, index, Int32Array, value, i32::div)
-    }
-
-    pub fn add_u32(&mut self, name: &str, value: u32) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.add_u32_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn add_u32_at(&mut self, index: usize, value: u32) -> Result<(), Error> {
-        math_op!(self, index, UInt32Array, value, u32::add)
-    }
-
-    pub fn sub_u32(&mut self, name: &str, value: u32) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.sub_u32_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn sub_u32_at(&mut self, index: usize, value: u32) -> Result<(), Error> {
-        math_op!(self, index, UInt32Array, value, u32::sub)
-    }
-
-    pub fn mul_u32(&mut self, name: &str, value: u32) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.mul_u32_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn mul_u32_at(&mut self, index: usize, value: u32) -> Result<(), Error> {
-        math_op!(self, index, UInt32Array, value, u32::mul)
-    }
-
-    pub fn div_u32(&mut self, name: &str, value: u32) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.div_u32_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn div_u32_at(&mut self, index: usize, value: u32) -> Result<(), Error> {
-        math_op!(self, index, UInt32Array, value, u32::div)
-    }
-
-    pub fn add_f32(&mut self, name: &str, value: f32) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.add_f32_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn add_f32_at(&mut self, index: usize, value: f32) -> Result<(), Error> {
-        math_op!(self, index, Float32Array, value, f32::add)
-    }
-
-    pub fn sub_f32(&mut self, name: &str, value: f32) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.sub_f32_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn sub_f32_at(&mut self, index: usize, value: f32) -> Result<(), Error> {
-        math_op!(self, index, Float32Array, value, f32::sub)
-    }
-
-    pub fn mul_f32(&mut self, name: &str, value: f32) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.mul_f32_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn mul_f32_at(&mut self, index: usize, value: f32) -> Result<(), Error> {
-        math_op!(self, index, Float32Array, value, f32::mul)
-    }
-
-    pub fn div_f32(&mut self, name: &str, value: f32) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.div_f32_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn div_f32_at(&mut self, index: usize, value: f32) -> Result<(), Error> {
-        math_op!(self, index, Float32Array, value, f32::div)
-    }
-
-    pub fn add_i64(&mut self, name: &str, value: i64) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.add_i64_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn add_i64_at(&mut self, index: usize, value: i64) -> Result<(), Error> {
-        math_op!(self, index, Int64Array, value, i64::add)
-    }
-
-    pub fn sub_i64(&mut self, name: &str, value: i64) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.sub_i64_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn sub_i64_at(&mut self, index: usize, value: i64) -> Result<(), Error> {
-        math_op!(self, index, Int64Array, value, i64::sub)
-    }
-
-    pub fn mul_i64(&mut self, name: &str, value: i64) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.mul_i64_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn mul_i64_at(&mut self, index: usize, value: i64) -> Result<(), Error> {
-        math_op!(self, index, Int64Array, value, i64::mul)
-    }
-
-    pub fn div_i64(&mut self, name: &str, value: i64) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.div_i64_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn div_i64_at(&mut self, index: usize, value: i64) -> Result<(), Error> {
-        math_op!(self, index, Int64Array, value, i64::div)
-    }
-
-    pub fn add_u64(&mut self, name: &str, value: u64) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.add_u64_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn add_u64_at(&mut self, index: usize, value: u64) -> Result<(), Error> {
-        math_op!(self, index, UInt64Array, value, u64::add)
-    }
-
-    pub fn sub_u64(&mut self, name: &str, value: u64) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.sub_u64_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn sub_u64_at(&mut self, index: usize, value: u64) -> Result<(), Error> {
-        math_op!(self, index, UInt64Array, value, u64::sub)
-    }
-
-    pub fn mul_u64(&mut self, name: &str, value: u64) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.mul_u64_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn mul_u64_at(&mut self, index: usize, value: u64) -> Result<(), Error> {
-        math_op!(self, index, UInt64Array, value, u64::mul)
-    }
-
-    pub fn div_u64(&mut self, name: &str, value: u64) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.div_u64_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn div_u64_at(&mut self, index: usize, value: u64) -> Result<(), Error> {
-        math_op!(self, index, UInt64Array, value, u64::div)
-    }
-
-    pub fn add_f64(&mut self, name: &str, value: f64) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.add_f64_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn add_f64_at(&mut self, index: usize, value: f64) -> Result<(), Error> {
-        math_op!(self, index, Float64Array, value, f64::add)
-    }
-
-    pub fn sub_f64(&mut self, name: &str, value: f64) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.sub_f64_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn sub_f64_at(&mut self, index: usize, value: f64) -> Result<(), Error> {
-        math_op!(self, index, Float64Array, value, f64::sub)
-    }
-
-    pub fn mul_f64(&mut self, name: &str, value: f64) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.mul_f64_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn mul_f64_at(&mut self, index: usize, value: f64) -> Result<(), Error> {
-        math_op!(self, index, Float64Array, value, f64::mul)
-    }
-
-    pub fn div_f64(&mut self, name: &str, value: f64) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.div_f64_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn div_f64_at(&mut self, index: usize, value: f64) -> Result<(), Error> {
-        math_op!(self, index, Float64Array, value, f64::div)
-    }
-
-    pub fn add_i128(&mut self, name: &str, value: i128) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.add_i128_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn add_i128_at(&mut self, index: usize, value: i128) -> Result<(), Error> {
-        math_op!(self, index, Int128Array, value, i128::add)
-    }
-
-    pub fn sub_i128(&mut self, name: &str, value: i128) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.sub_i128_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn sub_i128_at(&mut self, index: usize, value: i128) -> Result<(), Error> {
-        math_op!(self, index, Int128Array, value, i128::sub)
-    }
-
-    pub fn mul_i128(&mut self, name: &str, value: i128) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.mul_i128_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn mul_i128_at(&mut self, index: usize, value: i128) -> Result<(), Error> {
-        math_op!(self, index, Int128Array, value, i128::mul)
-    }
-
-    pub fn div_i128(&mut self, name: &str, value: i128) -> Result<(), Error> {
-        if let Some(pos) = self.get_column_index(name) {
-            self.div_i128_at(pos, value)
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
-    }
-    pub fn div_i128_at(&mut self, index: usize, value: i128) -> Result<(), Error> {
-        math_op!(self, index, Int128Array, value, i128::div)
-    }
-    // end auto-generated
 }
 
 impl From<DataFrame> for Chunk<Box<dyn Array>> {

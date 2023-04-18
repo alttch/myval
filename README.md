@@ -69,16 +69,16 @@ df.set_data_type("time",
 Consider there is a utf8-column "value" which should be parsed to floats:
 
 ```rust,ignore
-df.parse_float("value").unwrap();
+df.parse::<f64>("value").unwrap();
 ```
 
 ### Basic in-place math
 
 ```rust,ignore
-df.add_i64("col", 1_000).unwrap();
-df.sub_i64("col", 1_000).unwrap();
-df.mul_i64("col", 1_000).unwrap();
-df.div_i64("col", 1_000).unwrap();
+df.add("col", 1_000i64).unwrap();
+df.sub("col", 1_000i64).unwrap();
+df.mul("col", 1_000i64).unwrap();
+df.div("col", 1_000i64).unwrap();
 ```
 
 ### Set column ordering
