@@ -72,6 +72,15 @@ Consider there is a utf8-column "value" which should be parsed to floats:
 df.parse_float("value").unwrap();
 ```
 
+### Basic in-place math
+
+```rust,ignore
+df.i64_add("col", 1_000).unwrap();
+df.i64_sub("col", 1_000).unwrap();
+df.i64_mul("col", 1_000).unwrap();
+df.i64_div("col", 1_000).unwrap();
+```
+
 ### Set column ordering
 
 Consider there is a Myval data frame with columns "voltage", "temp1", "temp2",
