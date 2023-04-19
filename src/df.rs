@@ -380,7 +380,7 @@ impl DataFrame {
         df.metadata = metadata;
         Ok(df)
     }
-    /// vertically join two data frames
+    /// horizontally join two data frames
     pub fn join(&mut self, other: Self) -> Result<(), Error> {
         if !other.is_empty() {
             let (fields, series, _) = other.into_parts();
