@@ -421,50 +421,60 @@ impl DataFrame {
         Ok(())
     }
     /// Clone series by name
-    pub fn clone_series(&mut self, name: &str) -> Result<(Series, DataType), Error> {
-        if let Some((pos, _)) = self
-            .fields
+    pub fn clone_series(&mut self, name: &str) -> Option<(Series, DataType)> {
+        self.fields
             .iter()
             .enumerate()
             .find(|(_, field)| field.name == name)
-        {
-            Ok((self.data[pos].clone(), self.fields[pos].data_type.clone()))
-        } else {
-            Err(Error::NotFound(name.to_owned()))
-        }
+            .map(|(pos, _)| (self.data[pos].clone(), self.fields[pos].data_type.clone()))
     }
     /// Clone series by index
-    pub fn clone_series_at(&mut self, index: usize) -> Result<(Series, DataType), Error> {
+    pub fn clone_series_at(&mut self, index: usize) -> Option<(Series, DataType)> {
         if index < self.fields.len() {
-            Ok((
+            Some((
                 self.data[index].clone(),
                 self.fields[index].data_type.clone(),
             ))
         } else {
-            Err(Error::OutOfBounds)
+            None
         }
     }
     /// Pop series by name
-    pub fn pop_series(&mut self, name: &str) -> Result<(Series, DataType), Error> {
+    pub fn pop_series(&mut self, name: &str) -> Option<(Series, DataType)> {
         if let Some((pos, _)) = self
             .fields
             .iter()
             .enumerate()
             .find(|(_, field)| field.name == name)
         {
-            let field = self.fields.remove(pos);
-            Ok((self.data.remove(pos), field.data_type))
+            Some((self.data.remove(pos), self.fields.remove(pos).data_type))
         } else {
-            Err(Error::NotFound(name.to_owned()))
+            None
         }
     }
     /// Pop series by index
-    pub fn pop_series_at(&mut self, index: usize) -> Result<(Series, String, DataType), Error> {
+    pub fn pop_series_at(&mut self, index: usize) -> Option<(Series, DataType, String)> {
         if index < self.fields.len() {
             let field = self.fields.remove(index);
-            Ok((self.data.remove(index), field.name, field.data_type))
+            Some((self.data.remove(index), field.data_type, field.name))
         } else {
-            Err(Error::OutOfBounds)
+            None
+        }
+    }
+    /// Get series by name
+    pub fn get_series(&mut self, name: &str) -> Option<(&Series, &DataType)> {
+        self.fields
+            .iter()
+            .enumerate()
+            .find(|(_, field)| field.name == name)
+            .map(|(pos, _)| (&self.data[pos], &self.fields[pos].data_type))
+    }
+    /// Get series by index
+    pub fn get_series_at(&mut self, index: usize) -> Option<(&Series, &DataType)> {
+        if index < self.fields.len() {
+            Some((&self.data[index], &self.fields[index].data_type))
+        } else {
+            None
         }
     }
     /// Rename column
