@@ -322,7 +322,7 @@ impl DataFrame {
     pub fn set_ordering(&mut self, names: &[&str]) {
         for (i, name) in names.iter().enumerate() {
             if let Some(pos) = self.get_column_index(name) {
-                if pos != i {
+                if pos != i && i < self.fields.len() {
                     self.fields.swap(i, pos);
                     self.data.swap(i, pos);
                 }
