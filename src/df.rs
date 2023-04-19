@@ -421,7 +421,7 @@ impl DataFrame {
         Ok(())
     }
     /// Clone series by name
-    pub fn clone_series(&mut self, name: &str) -> Option<(Series, DataType)> {
+    pub fn clone_series(&self, name: &str) -> Option<(Series, DataType)> {
         self.fields
             .iter()
             .enumerate()
@@ -429,7 +429,7 @@ impl DataFrame {
             .map(|(pos, _)| (self.data[pos].clone(), self.fields[pos].data_type.clone()))
     }
     /// Clone series by index
-    pub fn clone_series_at(&mut self, index: usize) -> Option<(Series, DataType)> {
+    pub fn clone_series_at(&self, index: usize) -> Option<(Series, DataType)> {
         if index < self.fields.len() {
             Some((
                 self.data[index].clone(),
@@ -462,7 +462,7 @@ impl DataFrame {
         }
     }
     /// Get series by name
-    pub fn get_series(&mut self, name: &str) -> Option<(&Series, &DataType)> {
+    pub fn get_series(&self, name: &str) -> Option<(&Series, &DataType)> {
         self.fields
             .iter()
             .enumerate()
@@ -470,7 +470,7 @@ impl DataFrame {
             .map(|(pos, _)| (&self.data[pos], &self.fields[pos].data_type))
     }
     /// Get series by index
-    pub fn get_series_at(&mut self, index: usize) -> Option<(&Series, &DataType)> {
+    pub fn get_series_at(&self, index: usize) -> Option<(&Series, &DataType)> {
         if index < self.fields.len() {
             Some((&self.data[index], &self.fields[index].data_type))
         } else {
