@@ -30,7 +30,11 @@ pub fn concat(data_frames: &[&DataFrame]) -> Result<DataFrame, Error> {
         let mut meta: BTreeMap<String, String> = BTreeMap::new();
         // collect all possible fields
         for df in data_frames {
-            meta.extend(df.metadata().clone());
+            for (n, v) in df.metadata() {
+                if !meta.contains_key(n) {
+                    meta.insert(n.clone(), v.clone());
+                }
+            }
             if !df.is_empty() {
                 for field in df.fields() {
                     if !fields.iter().any(|f| f.name == field.name) {
