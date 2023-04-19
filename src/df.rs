@@ -489,6 +489,36 @@ impl DataFrame {
             Err(Error::OutOfBounds)
         }
     }
+    /// parse string with a custom function
+    pub fn parse_with<F, O>(&mut self, name: &str, func: F) -> Result<(), Error>
+    where
+        F: Fn(Option<&str>) -> Option<O>,
+        O: NativeType,
+    {
+        if let Some(pos) = self.get_column_index(name) {
+            self.parse_with_at::<F, O>(pos, func)
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    pub fn parse_with_at<F, O>(&mut self, index: usize, func: F) -> Result<(), Error>
+    where
+        F: Fn(Option<&str>) -> Option<O>,
+        O: NativeType,
+    {
+        if let Some(series) = self.data.get(index) {
+            let values: &Utf8Array<i64> =
+                series.as_any().downcast_ref().ok_or(Error::TypeMismatch)?;
+            let dt: Vec<Option<_>> = values.into_iter().map(func).collect();
+            let arr = PrimitiveArray::<O>::from(dt).boxed();
+            let dtype = arr.data_type().clone();
+            self.data[index] = arr;
+            self.fields[index].data_type = dtype;
+            Ok(())
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    }
     /// Convert to string
     pub fn stringify<T>(&mut self, name: &str) -> Result<(), Error>
     where
