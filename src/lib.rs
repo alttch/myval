@@ -135,7 +135,7 @@ pub fn concat(data_frames: &[&DataFrame]) -> Result<DataFrame, Error> {
     } else {
         let cols = data_frames[0].data().len();
         let fields = data_frames[0].fields().to_owned();
-        let meta = data_frames[0].metadata().to_owned();
+        let meta = data_frames[0].metadata().clone();
         let mut data = Vec::with_capacity(cols);
         for c in 0..cols {
             let mut serie = Vec::with_capacity(data_frames.len());
