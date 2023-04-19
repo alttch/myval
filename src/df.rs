@@ -202,13 +202,18 @@ impl DataFrame {
         metadata: Option<Metadata>,
     ) -> Result<(), Error> {
         if self.data.is_empty() || series.len() == self.data[0].len() {
-            let mut field = Field::new(name, data_type.unwrap_or(series.data_type().clone()), true);
-            if let Some(meta) = metadata {
-                field = field.with_metadata(meta);
+            if self.get_column_index(name).is_none() {
+                let mut field =
+                    Field::new(name, data_type.unwrap_or(series.data_type().clone()), true);
+                if let Some(meta) = metadata {
+                    field = field.with_metadata(meta);
+                }
+                self.fields.push(field);
+                self.data.push(series);
+                Ok(())
+            } else {
+                Err(Error::AlreadyExists)
             }
-            self.fields.push(field);
-            self.data.push(series);
-            Ok(())
         } else {
             Err(Error::RowsNotMatch)
         }
@@ -229,14 +234,18 @@ impl DataFrame {
     ) -> Result<(), Error> {
         if index <= self.data.len() {
             if self.data.is_empty() || series.len() == self.data[0].len() {
-                let mut field =
-                    Field::new(name, data_type.unwrap_or(series.data_type().clone()), true);
-                if let Some(meta) = metadata {
-                    field = field.with_metadata(meta);
+                if self.get_column_index(name).is_none() {
+                    let mut field =
+                        Field::new(name, data_type.unwrap_or(series.data_type().clone()), true);
+                    if let Some(meta) = metadata {
+                        field = field.with_metadata(meta);
+                    }
+                    self.fields.insert(index, field);
+                    self.data.insert(index, series);
+                    Ok(())
+                } else {
+                    Err(Error::AlreadyExists)
                 }
-                self.fields.insert(index, field);
-                self.data.insert(index, series);
-                Ok(())
             } else {
                 Err(Error::RowsNotMatch)
             }
