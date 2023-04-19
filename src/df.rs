@@ -11,6 +11,7 @@ use arrow2::io::ipc::read::{StreamReader, StreamState};
 use arrow2::io::ipc::write::{StreamWriter, WriteOptions};
 use arrow2::types::NativeType;
 use chrono::{DateTime, Local, NaiveDateTime, SecondsFormat, Utc};
+use std::fmt;
 use std::ops::{Add, Div, Mul, Sub};
 use std::str::FromStr;
 
@@ -379,6 +380,30 @@ impl DataFrame {
         df.metadata = metadata;
         Ok(df)
     }
+    /// Clone series by name
+    pub fn clone_series(&mut self, name: &str) -> Result<(Series, DataType), Error> {
+        if let Some((pos, _)) = self
+            .fields
+            .iter()
+            .enumerate()
+            .find(|(_, field)| field.name == name)
+        {
+            Ok((self.data[pos].clone(), self.fields[pos].data_type.clone()))
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    /// Clone series by index
+    pub fn clone_series_at(&mut self, index: usize) -> Result<(Series, DataType), Error> {
+        if index < self.fields.len() {
+            Ok((
+                self.data[index].clone(),
+                self.fields[index].data_type.clone(),
+            ))
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    }
     /// Pop series by name
     pub fn pop_series(&mut self, name: &str) -> Result<(Series, DataType), Error> {
         if let Some((pos, _)) = self
@@ -446,6 +471,37 @@ impl DataFrame {
             Err(Error::OutOfBounds)
         }
     }
+    /// Convert to string
+    pub fn stringify<T>(&mut self, name: &str) -> Result<(), Error>
+    where
+        T: NativeType + fmt::Display,
+    {
+        if let Some(pos) = self.get_column_index(name) {
+            self.stringify_at::<T>(pos)
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    pub fn stringify_at<T>(&mut self, index: usize) -> Result<(), Error>
+    where
+        T: NativeType + fmt::Display,
+    {
+        if let Some(series) = self.data.get(index) {
+            let values: &PrimitiveArray<T> =
+                series.as_any().downcast_ref().ok_or(Error::TypeMismatch)?;
+            #[allow(clippy::redundant_closure_for_method_calls)]
+            let dt: Vec<Option<_>> = values
+                .into_iter()
+                .map(|v| v.map(|n| n.to_string()))
+                .collect();
+            let arr = Utf8Array::<i64>::from(dt);
+            self.data[index] = arr.boxed();
+            self.fields[index].data_type = DataType::LargeUtf8;
+            Ok(())
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    }
     /// apply a custom function
     pub fn apply<F, I, O>(&mut self, name: &str, func: F) -> Result<(), Error>
     where
@@ -469,7 +525,10 @@ impl DataFrame {
             let values: &PrimitiveArray<I> =
                 series.as_any().downcast_ref().ok_or(Error::TypeMismatch)?;
             let dt: Vec<Option<_>> = values.into_iter().map(|v| func(v.copied())).collect();
-            self.data[index] = PrimitiveArray::<O>::from(dt).boxed();
+            let arr = PrimitiveArray::<O>::from(dt).boxed();
+            let dtype = arr.data_type().clone();
+            self.data[index] = arr;
+            self.fields[index].data_type = dtype;
             Ok(())
         } else {
             Err(Error::OutOfBounds)
