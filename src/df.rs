@@ -212,7 +212,7 @@ impl DataFrame {
                 self.data.push(series);
                 Ok(())
             } else {
-                Err(Error::AlreadyExists)
+                Err(Error::AlreadyExists(name.to_owned()))
             }
         } else {
             Err(Error::RowsNotMatch)
@@ -244,7 +244,7 @@ impl DataFrame {
                     self.data.insert(index, series);
                     Ok(())
                 } else {
-                    Err(Error::AlreadyExists)
+                    Err(Error::AlreadyExists(name.to_owned()))
                 }
             } else {
                 Err(Error::RowsNotMatch)
@@ -409,6 +409,11 @@ impl DataFrame {
             if let Some(first) = self.data.first() {
                 if first.len() != series[0].len() {
                     return Err(Error::RowsNotMatch);
+                }
+            }
+            for field in &fields {
+                if self.get_column_index(&field.name).is_some() {
+                    return Err(Error::AlreadyExists(field.name.clone()));
                 }
             }
             self.fields.reserve(fields.len());
