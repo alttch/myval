@@ -84,7 +84,7 @@ df.div("col", 1_000i64).unwrap();
 ### Custom in-place transformations
 
 ```rust,ignore
-df.apply("time", |time| time.map(|t: i64| t / 1_000))?;
+df.apply("time", |time| time.map(|t: i64| t / 1_000)).unwrap();
 ```
 
 ### Set column ordering
