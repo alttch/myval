@@ -288,6 +288,19 @@ impl DataFrame {
             Err(Error::OutOfBounds)
         }
     }
+    /// Truncate in-place
+    pub fn truncate(&mut self, offset: usize, length: usize) -> Result<(), Error> {
+        if self.data.is_empty() {
+            Ok(())
+        } else if offset + length <= self.data[0].len() {
+            for data in &mut self.data {
+                data.slice(offset, length);
+            }
+            Ok(())
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    }
     /// Generate schema object
     #[inline]
     pub fn schema(&self) -> Schema {
