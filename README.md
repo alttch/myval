@@ -87,6 +87,18 @@ df.div("col", 1_000i64).unwrap();
 df.apply("time", |time| time.map(|t: i64| t / 1_000)).unwrap();
 ```
 
+### Horizontal join
+
+```rust,ignore
+df.join(df2).unwrap();
+```
+
+### Concatenation
+
+```rust,ignore
+let merged = myval::concat(&[&df1, &df2, &df3]).unwrap();
+```
+
 ### Set column ordering
 
 Consider there is a Myval data frame with columns "voltage", "temp1", "temp2",
