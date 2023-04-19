@@ -380,6 +380,24 @@ impl DataFrame {
         df.metadata = metadata;
         Ok(df)
     }
+    /// vertically join two data frames
+    pub fn join(&mut self, other: Self) -> Result<(), Error> {
+        if !other.is_empty() {
+            let (fields, series, _) = other.into_parts();
+            if let Some(first) = self.data.first() {
+                if first.len() != series[0].len() {
+                    return Err(Error::RowsNotMatch);
+                }
+            }
+            self.fields.reserve(fields.len());
+            self.data.reserve(series.len());
+            for (field, serie) in fields.into_iter().zip(series) {
+                self.fields.push(field);
+                self.data.push(serie);
+            }
+        }
+        Ok(())
+    }
     /// Clone series by name
     pub fn clone_series(&mut self, name: &str) -> Result<(Series, DataType), Error> {
         if let Some((pos, _)) = self
