@@ -1,3 +1,6 @@
+#[cfg(feature = "arrow2_ih")]
+extern crate arrow2_ih as arrow2;
+
 use crate::df::{DataFrame, Series};
 use crate::Error;
 use arrow2::array::{

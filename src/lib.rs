@@ -5,6 +5,9 @@ use std::fmt;
 mod df;
 pub use df::{Chunk, DataFrame, DataType, Metadata, Schema, Series, TimeUnit};
 
+mod ops;
+pub use ops::concat::concat;
+
 pub mod db;
 
 #[derive(Debug)]
@@ -125,26 +128,5 @@ impl Time {
     #[inline]
     fn timestamp_ms(&self) -> u64 {
         self.sec * 1_000 + self.nsec / 1_000_000
-    }
-}
-
-// concat multiple data frames
-pub fn concat(data_frames: &[&DataFrame]) -> Result<DataFrame, Error> {
-    if data_frames.is_empty() {
-        Ok(DataFrame::new0())
-    } else {
-        let cols = data_frames[0].data().len();
-        let fields = data_frames[0].fields().to_owned();
-        let meta = data_frames[0].metadata().clone();
-        let mut data = Vec::with_capacity(cols);
-        for c in 0..cols {
-            let mut serie = Vec::with_capacity(data_frames.len());
-            for df in data_frames {
-                serie.push(df.data().get(c).ok_or(Error::ColsNotMatch)?.as_ref());
-            }
-            let c_data = arrow2::compute::concatenate::concatenate(&serie)?;
-            data.push(c_data);
-        }
-        DataFrame::from_parts(fields, data, Some(meta))
     }
 }
