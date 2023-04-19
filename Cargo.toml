@@ -17,7 +17,7 @@ features = ["full"]
 
 [dependencies]
 arrow2 = { version = "0.17.0", features = ["io_ipc", "compute_concatenate"], optional = true }
-arrow2_ih = { version = "0.17.0", package = "arrow2", git = "https://github.com/divi255/arrow2", features = ["io_ipc"], optional = true }
+arrow2_ih = { version = "0.17.0", package = "arrow2", git = "https://github.com/divi255/arrow2", features = ["io_ipc", "compute_concaternate"], optional = true }
 async-stream = { version = "0.3.5", optional = true }
 chrono = "0.4.24"
 futures = { version = "0.3.28", optional = true }
