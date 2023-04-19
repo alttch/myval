@@ -81,6 +81,12 @@ df.mul("col", 1_000i64).unwrap();
 df.div("col", 1_000i64).unwrap();
 ```
 
+### Custom in-place transformations
+
+```rust,ignore
+df.apply("time", |time| time.map(|t: i64| t / 1_000))?;
+```
+
 ### Set column ordering
 
 Consider there is a Myval data frame with columns "voltage", "temp1", "temp2",

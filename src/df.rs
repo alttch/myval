@@ -446,6 +446,35 @@ impl DataFrame {
             Err(Error::OutOfBounds)
         }
     }
+    /// apply a custom function
+    pub fn apply<F, I, O>(&mut self, name: &str, func: F) -> Result<(), Error>
+    where
+        F: Fn(Option<I>) -> Option<O>,
+        I: NativeType,
+        O: NativeType,
+    {
+        if let Some(pos) = self.get_column_index(name) {
+            self.apply_at::<F, I, O>(pos, func)
+        } else {
+            Err(Error::NotFound(name.to_owned()))
+        }
+    }
+    pub fn apply_at<F, I, O>(&mut self, index: usize, func: F) -> Result<(), Error>
+    where
+        F: Fn(Option<I>) -> Option<O>,
+        I: NativeType,
+        O: NativeType,
+    {
+        if let Some(series) = self.data.get(index) {
+            let values: &PrimitiveArray<I> =
+                series.as_any().downcast_ref().ok_or(Error::TypeMismatch)?;
+            let dt: Vec<Option<_>> = values.into_iter().map(|v| func(v.copied())).collect();
+            self.data[index] = PrimitiveArray::<O>::from(dt).boxed();
+            Ok(())
+        } else {
+            Err(Error::OutOfBounds)
+        }
+    }
     /// Set field name by index
     pub fn set_name_at(&mut self, index: usize, new_name: &str) -> Result<(), Error> {
         if let Some(field) = self.fields.get_mut(index) {
