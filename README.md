@@ -212,3 +212,16 @@ chunks are automatically aggregated.
 
 * Some features (conversion to Polars, PostgreSQL) are experimental, use at
 your own risk.
+
+## About
+
+Myval is a part of [EVA ICS Machine Learning
+kit](https://info.bma.ai/en/actual/eva-mlkit/index.html) developed by [Bohemia
+Automation](https://www.bohemia-automation.com).
+
+[Bohemia Automation](https://www.bohemia-automation.com) /
+[Altertech](https://www.altertech.com) is a group of companies with 15+ years
+of experience in the enterprise automation and industrial IoT. Our setups
+include power plants, factories and urban infrastructure. Largest of them have
+1M+ sensors and controlled devices and the bar raises higher and higher every
+day.
