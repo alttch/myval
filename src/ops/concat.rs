@@ -3,8 +3,9 @@ extern crate arrow2_ih as arrow2;
 
 use crate::df::{DataFrame, Series};
 use crate::Error;
-use arrow2::array::Array;
-use arrow2::datatypes::DataType;
+use arrow2::array::{new_null_array, Array};
+use arrow2::compute;
+use arrow2::datatypes::{DataType, Field};
 use std::collections::BTreeMap;
 
 enum El<'a> {
@@ -26,7 +27,7 @@ pub fn concat(data_frames: &[&DataFrame]) -> Result<DataFrame, Error> {
     if data_frames.is_empty() {
         Ok(DataFrame::new0())
     } else {
-        let mut fields: Vec<arrow2::datatypes::Field> = Vec::new();
+        let mut fields: Vec<Field> = Vec::new();
         let mut meta: BTreeMap<String, String> = BTreeMap::new();
         // collect all possible fields
         for df in data_frames {
@@ -72,14 +73,13 @@ pub fn concat(data_frames: &[&DataFrame]) -> Result<DataFrame, Error> {
                     match s {
                         El::Array(a) => serie_data.push(*a),
                         El::Null(h) => {
-                            let arr =
-                                arrow2::array::new_null_array(i.dtype.clone(), i.rows).to_boxed();
+                            let arr = new_null_array(i.dtype.clone(), i.rows).to_boxed();
                             h.replace(arr);
                             serie_data.push(h.as_ref().unwrap().as_ref());
                         }
                     }
                 }
-                let c_data = arrow2::compute::concatenate::concatenate(&serie_data)?;
+                let c_data = compute::concatenate::concatenate(&serie_data)?;
                 data.push(c_data);
             }
         }
