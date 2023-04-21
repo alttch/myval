@@ -20,6 +20,10 @@ use std::fmt::Write as _;
 use std::pin::Pin;
 use std::sync::Arc;
 
+const DB_NAME_FORBIDDEN_SYMBOLS: &str = "\"'`";
+
+type PgQuery<'a> = Query<'a, Postgres, <Postgres as sqlx::database::HasArguments<'a>>::Arguments>;
+
 enum Data {
     Bool(Vec<Option<bool>>),
     Int16(Vec<Option<i16>>),
@@ -192,10 +196,6 @@ fn pg_excluded(vals: &[&str]) -> Result<String, Error> {
     }
     Ok(s)
 }
-
-const DB_NAME_FORBIDDEN_SYMBOLS: &str = "\"'`";
-
-type PgQuery<'a> = Query<'a, Postgres, <Postgres as sqlx::database::HasArguments<'a>>::Arguments>;
 
 fn pg_bind(q: PgQuery<'_>, arr: Series, is_json: bool) -> Result<PgQuery<'_>, Error> {
     macro_rules! bind_str {
