@@ -19,7 +19,7 @@ translated as "little bear".
 ## But there is Polars?
 
 Myval is not a competitor of Polars. Myval is a lightweight Arrow data frame
-which is focused on data transformation and IPC.
+which is focused on in-place data transformation and IPC.
 
 Because Arrow has got the standardized data layout, data frames can be
 converted to Polars and vice-versa with zero-copy:
