@@ -2,6 +2,8 @@
 extern crate arrow2_ih as arrow2;
 
 use crate::{Error, Time, TimeZone};
+#[cfg(feature = "json")]
+use arrow2::array::BooleanArray;
 use arrow2::array::{Array, Int64Array, PrimitiveArray, Utf8Array};
 pub use arrow2::chunk::Chunk;
 use arrow2::datatypes::Field;
@@ -826,6 +828,172 @@ impl DataFrame {
             Err(Error::OutOfBounds)
         }
     }
+    #[cfg(feature = "json")]
+    pub fn to_json_map(&self) -> Result<serde_json::Map<String, serde_json::Value>, Error> {
+        let mut map = serde_json::Map::with_capacity(self.fields.len());
+        macro_rules! arr2val {
+            ($field: expr, $serie: expr, $kind: ty) => {
+                map.insert(
+                    $field.name.clone(),
+                    serde_json::Value::Array(
+                        $serie
+                            .as_any()
+                            .downcast_ref::<$kind>()
+                            .ok_or(Error::TypeMismatch)?
+                            .iter()
+                            .map(|val| val.map_or(serde_json::Value::Null, Into::into))
+                            .collect(),
+                    ),
+                );
+            };
+        }
+        macro_rules! prim2val {
+            ($field: expr, $serie: expr, $kind: ty) => {
+                map.insert(
+                    $field.name.clone(),
+                    serde_json::Value::Array(
+                        $serie
+                            .as_any()
+                            .downcast_ref::<PrimitiveArray<$kind>>()
+                            .ok_or(Error::TypeMismatch)?
+                            .iter()
+                            .map(|val| val.map_or(serde_json::Value::Null, |v| (*v).into()))
+                            .collect(),
+                    ),
+                );
+            };
+        }
+        for (serie, field) in self.data.iter().zip(&self.fields) {
+            match serie.data_type() {
+                DataType::Boolean => {
+                    arr2val!(field, serie, BooleanArray);
+                }
+                DataType::Float32 => {
+                    prim2val!(field, serie, f32);
+                }
+                DataType::Float64 => {
+                    prim2val!(field, serie, f64);
+                }
+                DataType::Int8 => {
+                    prim2val!(field, serie, i8);
+                }
+                DataType::Int16 => {
+                    prim2val!(field, serie, i16);
+                }
+                DataType::Int32 => {
+                    prim2val!(field, serie, i32);
+                }
+                DataType::Int64 => {
+                    prim2val!(field, serie, i64);
+                }
+                DataType::UInt8 => {
+                    prim2val!(field, serie, u8);
+                }
+                DataType::UInt16 => {
+                    prim2val!(field, serie, u16);
+                }
+                DataType::UInt32 => {
+                    prim2val!(field, serie, u32);
+                }
+                DataType::UInt64 => {
+                    prim2val!(field, serie, u64);
+                }
+                DataType::Utf8 => {
+                    arr2val!(field, serie, Utf8Array<i32>);
+                }
+                DataType::LargeUtf8 => {
+                    arr2val!(field, serie, Utf8Array<i64>);
+                }
+                v => {
+                    return Err(Error::Unimplemented(format!("{:?}", v)));
+                }
+            }
+        }
+        Ok(map)
+    }
+    #[cfg(feature = "json")]
+    pub fn to_json_array(&self) -> Result<Vec<serde_json::Value>, Error> {
+        if let Some(rows) = self.rows() {
+            let mut result = Vec::with_capacity(rows);
+            for row in 0..rows {
+                let mut row_data = serde_json::Map::with_capacity(self.fields.len());
+                macro_rules! arr2val {
+                    ($field: expr, $serie: expr, $kind: ty) => {
+                        row_data.insert(
+                            $field.name.clone(),
+                            $serie
+                                .as_any()
+                                .downcast_ref::<$kind>()
+                                .ok_or(Error::TypeMismatch)?
+                                .get(row)
+                                .map_or(serde_json::Value::Null, Into::into),
+                        )
+                    };
+                }
+                macro_rules! prim2val {
+                    ($field: expr, $serie: expr, $kind: ty) => {
+                        arr2val!($field, $serie, PrimitiveArray<$kind>);
+                    };
+                }
+                for (serie, field) in self.data.iter().zip(&self.fields) {
+                    match serie.data_type() {
+                        DataType::Boolean => {
+                            arr2val!(field, serie, BooleanArray);
+                        }
+                        DataType::Float32 => {
+                            prim2val!(field, serie, f32);
+                        }
+                        DataType::Float64 => {
+                            prim2val!(field, serie, f64);
+                        }
+                        DataType::Int8 => {
+                            prim2val!(field, serie, i8);
+                        }
+                        DataType::Int16 => {
+                            prim2val!(field, serie, i16);
+                        }
+                        DataType::Int32 => {
+                            prim2val!(field, serie, i32);
+                        }
+                        DataType::Int64 => {
+                            prim2val!(field, serie, i64);
+                        }
+                        DataType::UInt8 => {
+                            prim2val!(field, serie, u8);
+                        }
+                        DataType::UInt16 => {
+                            prim2val!(field, serie, u16);
+                        }
+                        DataType::UInt32 => {
+                            prim2val!(field, serie, u32);
+                        }
+                        DataType::UInt64 => {
+                            prim2val!(field, serie, u64);
+                        }
+                        DataType::Utf8 => {
+                            arr2val!(field, serie, Utf8Array<i32>);
+                        }
+                        DataType::LargeUtf8 => {
+                            arr2val!(field, serie, Utf8Array<i64>);
+                        }
+                        v => {
+                            return Err(Error::Unimplemented(format!("{:?}", v)));
+                        }
+                    }
+                }
+                result.push(serde_json::Value::Object(row_data));
+            }
+            Ok(result)
+        } else {
+            Ok(vec![])
+        }
+    }
+    //#[cfg(feature = "serde_json")]
+    //pub fn from_json_value(
+    //value: serde_json::Value,
+    //type_map: ,
+    //) -> Result<Self, Error> {
+    //}
 }
 
 impl From<DataFrame> for Chunk<Box<dyn Array>> {
