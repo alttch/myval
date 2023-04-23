@@ -115,7 +115,7 @@ Myval data frames can be parsed from
 [serde_json](https://crates.io/crates/serde_json) Value (map only) or converted
 to Value (map/array). This requires "json" crate feature:
 
-``rust,ignore
+```rust,ignore
 // create Object value from a data frame, converted to serde_json::Map
 let val = serde_json::Value::Object(df.to_json_map().unwrap());
 // parse it back
