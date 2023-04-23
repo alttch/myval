@@ -29,7 +29,7 @@ pub struct Parser {
 
 impl Parser {
     #[inline]
-    pub fn new0() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
     pub fn with_type_mapping(mut self, name: &str, data_type: DataType) -> Self {
