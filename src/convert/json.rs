@@ -3,7 +3,6 @@ extern crate arrow2_ih as arrow2;
 use arrow2::array::{BooleanArray, PrimitiveArray, Utf8Array};
 use arrow2::datatypes::DataType;
 use serde::Deserialize;
-use std::collections::BTreeMap;
 
 use crate::df::DataFrame;
 use crate::Error;
@@ -25,7 +24,7 @@ impl TryFrom<&DataFrame> for Value {
 
 #[derive(Default)]
 pub struct Parser {
-    type_map: BTreeMap<String, DataType>,
+    type_map: Vec<(String, DataType)>,
 }
 
 impl Parser {
@@ -33,11 +32,8 @@ impl Parser {
     pub fn new0() -> Self {
         Self::default()
     }
-    pub fn new(type_map: BTreeMap<String, DataType>) -> Self {
-        Self { type_map }
-    }
     pub fn with_type_mapping(mut self, name: &str, data_type: DataType) -> Self {
-        self.type_map.insert(name.to_owned(), data_type);
+        self.type_map.push((name.to_owned(), data_type));
         self
     }
     pub fn parse_value(&self, value: serde_json::Value) -> Result<DataFrame, Error> {
