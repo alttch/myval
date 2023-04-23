@@ -109,6 +109,28 @@ ordering. Let us correct the ordering back to normal:
 df.set_ordering(&["voltage", "temp1", "temp2", "temp3"]);
 ```
 
+### From/to JSON
+
+Myval data frames can be parsed from
+[serde_json](https://crates.io/crates/serde_json) Value (map only) or converted
+to Value (map/array). This requires "json" crate feature:
+
+``rust,ignore
+// create Object value from a data frame, converted to serde_json::Map
+let val = serde_json::Value::Object(df.to_json_map().unwrap());
+// parse it back
+let mut parser = myval::convert::json::Parser::new0().with_type_mapping("name", DataType::LargeUtf8);
+parser = parser.with_type_mapping("time", DataType::Int64);
+parser = parser.with_type_mapping("status", DataType::Int32);
+let parsed_df = parser.parse_value(val).unwrap();
+```
+
+* Some data types can not be correctly parsed from Value objects (e.g.
+Timestamp), use DataFrame methods to correct them to the required ones.
+
+* If a column is defined in a json::Parser object but missing in Value, it is
+created as null-filled.
+
 ### Others
 
 Check the documentation: <https://docs.rs/myval>
