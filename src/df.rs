@@ -852,6 +852,9 @@ impl From<DataFrame> for polars::frame::DataFrame {
     //
     // If a data frame contains Utf8<i32> (Utf8 data type), the conversion may crash the program.
     // The solution for now is to avoid using Utf8 and use LargeUtf8 instead.
+    //
+    // If a data frame contains Int16, the conversion may crash the program.
+    // The solution for now is to avoid using Int16 and use Int32/Int64 instead.
     fn from(df: DataFrame) -> polars::frame::DataFrame {
         let (fields, data, _) = df.into_parts();
         let polars_series = unsafe {
