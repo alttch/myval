@@ -988,12 +988,6 @@ impl DataFrame {
             Ok(vec![])
         }
     }
-    //#[cfg(feature = "serde_json")]
-    //pub fn from_json_value(
-    //value: serde_json::Value,
-    //type_map: ,
-    //) -> Result<Self, Error> {
-    //}
 }
 
 impl From<DataFrame> for Chunk<Box<dyn Array>> {
