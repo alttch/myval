@@ -1,11 +1,11 @@
 #[cfg(feature = "arrow2_ih")]
 extern crate arrow2_ih as arrow2;
-use arrow2::array::{BooleanArray, PrimitiveArray, Utf8Array};
-use arrow2::datatypes::DataType;
-use serde::Deserialize;
 
 use crate::df::DataFrame;
 use crate::Error;
+use arrow2::array::{BooleanArray, PrimitiveArray, Utf8Array};
+use arrow2::datatypes::DataType;
+use serde::Deserialize;
 use serde_json::Value;
 
 impl TryFrom<DataFrame> for Value {
