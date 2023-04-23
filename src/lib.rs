@@ -5,13 +5,10 @@ use std::fmt;
 #[cfg(feature = "arrow2_ih")]
 extern crate arrow2_ih as arrow2;
 
-mod convert;
+pub mod convert;
 mod df;
 
 pub use df::{Chunk, DataFrame, DataType, Metadata, Schema, Series, TimeUnit};
-
-#[cfg(feature = "json")]
-pub use convert::json::Parser as JsonParser;
 
 mod ops;
 pub use ops::concat::concat;
