@@ -34,4 +34,4 @@ path = "src/lib.rs"
 default = ["arrow2"]
 json = ["serde_json", "serde"]
 postgres = ["sqlx", "serde_json", "serde", "async-stream", "futures"]
-full = ["default", "postgres", "polars"]
+full = ["default", "postgres", "polars", "json"]
