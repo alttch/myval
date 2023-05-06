@@ -149,9 +149,9 @@ enabled):
 ```rust,ignore
 use futures::stream::TryStreamExt;
 
-let pool = Arc::new(PgPoolOptions::new()
+let pool = PgPoolOptions::new()
     .connect("postgres://postgres:welcome@localhost/postgres")
-    .await.unwrap());
+    .await.unwrap();
 let max_size = 100_000;
 let mut stream = myval::db::postgres::fetch(
     "select * from test".to_owned(), Some(max_size), pool.clone());
@@ -162,9 +162,9 @@ while let Some(df) = stream.try_next().await.unwrap() {
 }
 ```
 
-Why does the stream object require Arc&lt;PgPool&gt;? There is one important reason:
-such stream objects are static and can be stored anywhere, e.g. used as cursors
-in a client-server architecture.
+Why does the stream object require PgPool? There is one important reason: such
+stream objects are static and can be stored anywhere, e.g. used as cursors in a
+client-server architecture.
 
 ### Pushing data into a database
 
