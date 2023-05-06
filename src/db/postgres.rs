@@ -18,7 +18,6 @@ use sqlx::{Column, PgPool, Postgres, Row, TypeInfo};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::pin::Pin;
-use std::sync::Arc;
 
 const DB_NAME_FORBIDDEN_SYMBOLS: &str = "\"'`";
 
@@ -398,7 +397,7 @@ pub async fn push<'a>(df: &DataFrame, params: &Params<'a>, pool: &PgPool) -> Res
 pub fn fetch(
     q: String,
     chunk_size: Option<usize>,
-    pool: Arc<PgPool>,
+    pool: PgPool,
 ) -> Pin<Box<impl Stream<Item = Result<DataFrame, Error>> + Send + ?Sized>> {
     let stream = try_stream! {
         let mut conn = pool.acquire().await?;
